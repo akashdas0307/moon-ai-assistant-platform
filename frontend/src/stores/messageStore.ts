@@ -29,10 +29,10 @@ export const useMessageStore = create<MessageState>((set) => ({
       }));
 
       set({ messages, isLoading: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error loading messages:', error);
       set({
-        error: error.message || 'Failed to load messages',
+        error: (error as Error).message || 'Failed to load messages',
         isLoading: false
       });
     }
