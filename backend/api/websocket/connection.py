@@ -1,8 +1,7 @@
 """WebSocket connection handler for real-time chat."""
-from typing import Dict, Set
-from fastapi import WebSocket, WebSocketDisconnect
+from typing import Dict
+from fastapi import WebSocket
 from datetime import datetime
-import json
 import logging
 
 logger = logging.getLogger(__name__)
