@@ -6,6 +6,13 @@ interface HealthResponse {
   version: string;
 }
 
+interface MessageResponse {
+  id: number;
+  sender: string;
+  content: string;
+  timestamp: string;
+}
+
 interface ApiError {
   message: string;
   code?: string;
@@ -57,7 +64,11 @@ class ApiClient {
   async checkHealth(): Promise<HealthResponse> {
     return this.request<HealthResponse>('/api/v1/health');
   }
+
+  async getMessages(limit: number = 100): Promise<MessageResponse[]> {
+    return this.request<MessageResponse[]>(`/api/v1/messages?limit=${limit}`);
+  }
 }
 
 export const apiClient = new ApiClient();
-export type { HealthResponse, ApiError };
+export type { HealthResponse, ApiError, MessageResponse };
