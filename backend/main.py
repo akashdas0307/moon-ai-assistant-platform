@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config.settings import settings
 import logging
 from datetime import datetime
+from backend.api.websocket.handlers import handle_websocket
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,12 @@ async def health_check():
         "version": "0.1.0",
         "timestamp": datetime.now().isoformat()
     }
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time communication."""
+    await handle_websocket(websocket)
 
 
 @app.on_event("startup")
