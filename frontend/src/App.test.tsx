@@ -10,6 +10,8 @@ describe('App', () => {
 
   it('renders connection status component', () => {
     render(<App />)
-    expect(screen.getByText(/Backend Connected|Connecting|Disconnected/i)).toBeInTheDocument()
+    // There might be multiple status indicators now (header + chat panel)
+    const statusElements = screen.getAllByText(/Backend Connected|Connecting|Disconnected/i)
+    expect(statusElements.length).toBeGreaterThan(0)
   })
 })
