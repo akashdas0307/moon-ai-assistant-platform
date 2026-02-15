@@ -1,0 +1,12 @@
+INFO:     Started server process [4058]
+INFO:     Waiting for application startup.
+INFO:backend.main:Moon-AI Backend starting up...
+INFO:backend.main:CORS origins: ['http://localhost:5173']
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:57842 - "GET /api/v1/health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:backend.main:Moon-AI Backend shutting down...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [4058]
