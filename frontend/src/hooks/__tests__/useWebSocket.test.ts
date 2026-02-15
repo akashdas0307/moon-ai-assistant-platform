@@ -8,13 +8,18 @@ class MockWebSocket {
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
   onclose: (() => void) | null = null;
-  readyState = WebSocket.CONNECTING;
+  readyState: number = 0; // WebSocket.CONNECTING
   url: string;
+
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSING = 2;
+  static readonly CLOSED = 3;
 
   constructor(url: string) {
     this.url = url;
     setTimeout(() => {
-      this.readyState = WebSocket.OPEN;
+      this.readyState = MockWebSocket.OPEN;
       this.onopen?.();
     }, 0);
   }
@@ -25,7 +30,7 @@ class MockWebSocket {
   }
 
   close() {
-    this.readyState = WebSocket.CLOSED;
+    this.readyState = MockWebSocket.CLOSED;
     this.onclose?.();
   }
 }
