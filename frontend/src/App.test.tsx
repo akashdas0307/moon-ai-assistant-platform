@@ -5,7 +5,7 @@ import App from './App'
 describe('App', () => {
   it('renders Moon AI title', () => {
     render(<App />)
-    expect(screen.getByRole('heading', { name: /Moon AI/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Moon AI/i, level: 1 })).toBeInTheDocument()
   })
 
   it('renders connection status component', () => {
