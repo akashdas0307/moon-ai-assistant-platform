@@ -8,7 +8,7 @@ import { WEBSOCKET_URL } from '../../config/constants';
 import { useMessageStore } from '../../stores/messageStore';
 
 export function ChatPanel() {
-  const { messages, addMessage, loadMessages, isLoading, error } = useMessageStore();
+  const { messages, addMessage, loadMessages, error } = useMessageStore();
   const [isTyping, setIsTyping] = useState(false);
 
   // Load messages on mount
@@ -22,7 +22,6 @@ export function ChatPanel() {
     setIsTyping(false);
   }, [addMessage]);
 
-  // Handle WebSocket connection
   const handleConnect = useCallback(() => {
     console.log('Connected to WebSocket server');
   }, []);
@@ -47,7 +46,6 @@ export function ChatPanel() {
   });
 
   const handleSendMessage = (content: string) => {
-    // Add user message to UI immediately
     const userMessage: Message = {
       id: Date.now().toString(),
       sender: 'user',
@@ -55,47 +53,59 @@ export function ChatPanel() {
       timestamp: new Date()
     };
     addMessage(userMessage);
-
-    // Show typing indicator
     setIsTyping(true);
-
-    // Send message via WebSocket
     sendWebSocketMessage(content);
   };
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-4xl mx-auto bg-gray-800 rounded-xl overflow-hidden shadow-2xl border border-gray-700">
-      <div className="bg-gray-900 p-4 border-b border-gray-700 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : (connectionError ? 'bg-red-500' : 'bg-yellow-500')}`}></span>
-          Moon AI Chat
-        </h2>
-        <div className="flex flex-col items-end">
-          {connectionError && (
-            <span className="text-xs text-red-400">{connectionError}</span>
-          )}
-          {!isConnected && !connectionError && (
-            <span className="text-xs text-yellow-400">Connecting...</span>
-          )}
-          {isLoading && (
-            <span className="text-xs text-blue-400">Loading history...</span>
-          )}
+    <div className="flex flex-col h-full w-full bg-[#111827] text-white overflow-hidden shadow-2xl border border-gray-800 rounded-xl">
+      {/* Header */}
+      <div className="flex-none bg-[#111827]/95 backdrop-blur border-b border-gray-800 p-4 flex items-center justify-between z-20">
+        <div className="flex items-center gap-3">
+          <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 ring-1 ring-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 border-2 border-[#111827] rounded-full transition-colors duration-300 ${isConnected ? 'bg-green-500' : (connectionError ? 'bg-red-500' : 'bg-yellow-500 animate-pulse')}`}></div>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+              Moon AI
+            </h2>
+            <div className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${isConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : (connectionError ? 'bg-red-500' : 'bg-yellow-500')}`}></span>
+              <span className="text-xs text-gray-400 font-medium transition-opacity duration-300">
+                {isConnected ? 'Online' : (connectionError ? 'Disconnected' : 'Connecting...')}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {error && (
-         <div className="p-2 bg-red-900/50 text-red-200 text-sm text-center">
-            Failed to load chat history: {error}
+      {/* Error Banner */}
+      {(error || connectionError) && (
+         <div className="flex-none bg-red-500/10 border-b border-red-500/20 px-4 py-2 text-red-400 text-sm flex items-center gap-2 animate-fade-in">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span>{error || connectionError}</span>
          </div>
       )}
 
-      <MessageList messages={messages} />
+      {/* Message List Area */}
+      <div className="flex-1 min-h-0 relative bg-gradient-to-b from-gray-900 to-[#111827]">
+        <MessageList messages={messages} />
 
-      <div className="px-4 pb-2 bg-gray-900">
-        <TypingIndicator isTyping={isTyping} />
+        {/* Typing Indicator Overlay */}
+        <div className={`absolute bottom-4 left-6 transition-all duration-300 transform ${isTyping ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+           <TypingIndicator isTyping={isTyping} />
+        </div>
       </div>
 
-      <MessageInput onSendMessage={handleSendMessage} disabled={!isConnected || isTyping} />
+      {/* Input Area */}
+      <div className="flex-none z-20 bg-[#111827]">
+        <MessageInput onSendMessage={handleSendMessage} disabled={!isConnected || isTyping} />
+      </div>
     </div>
   );
 }
