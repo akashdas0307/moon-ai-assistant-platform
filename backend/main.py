@@ -4,6 +4,8 @@ from backend.config.settings import settings
 import logging
 from datetime import datetime
 from backend.api.websocket.handlers import handle_websocket
+from backend.database.db import init_db
+from backend.api.routes.messages import router as messages_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,6 +17,9 @@ app = FastAPI(
     description="Backend API for Moon AI Assistant",
     version="0.1.0",
 )
+
+# Include Routers
+app.include_router(messages_router, prefix="/api/v1")
 
 # Configure CORS
 app.add_middleware(
@@ -48,6 +53,13 @@ async def startup_event():
     """Run on application startup."""
     logger.info("Moon-AI Backend starting up...")
     logger.info(f"CORS origins: {settings.cors_origins}")
+
+    # Initialize Database
+    try:
+        init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
 
 
 @app.on_event("shutdown")

@@ -5,6 +5,8 @@ import json
 import logging
 import uuid
 from .connection import manager
+from backend.services.message_service import save_message
+from backend.models.message import MessageCreate
 
 logger = logging.getLogger(__name__)
 
@@ -38,16 +40,33 @@ async def handle_websocket(websocket: WebSocket):
             data = await websocket.receive_text()
 
             try:
-                message = json.loads(data)
-                logger.info(f"Received from {client_id}: {message}")
+                message_data = json.loads(data)
+                logger.info(f"Received from {client_id}: {message_data}")
+
+                content = message_data.get('content', '')
+
+                # Save user message
+                if content:
+                    try:
+                        save_message(MessageCreate(sender="user", content=content))
+                    except Exception as e:
+                        logger.error(f"Failed to save user message: {e}")
+
+                response_text = f"Server received: {content}"
+
+                # Save assistant response
+                try:
+                    save_message(MessageCreate(sender="assistant", content=response_text))
+                except Exception as e:
+                    logger.error(f"Failed to save assistant message: {e}")
 
                 # Echo the message back with metadata
                 response = {
                     "type": "echo",
-                    "original_message": message,
+                    "original_message": message_data,
                     "client_id": client_id,
                     "timestamp": datetime.utcnow().isoformat(),
-                    "server_message": f"Server received: {message.get('content', 'No content')}"
+                    "server_message": response_text
                 }
 
                 await manager.send_message(client_id, response)

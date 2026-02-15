@@ -1,32 +1,30 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Message } from '../../types/chat';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { TypingIndicator } from './TypingIndicator';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { WEBSOCKET_URL } from '../../config/constants';
+import { useMessageStore } from '../../stores/messageStore';
 
 export function ChatPanel() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, addMessage, loadMessages, isLoading, error } = useMessageStore();
   const [isTyping, setIsTyping] = useState(false);
+
+  // Load messages on mount
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
 
   // Handle incoming WebSocket messages
   const handleWebSocketMessage = useCallback((message: Message) => {
-    setMessages(prev => [...prev, message]);
+    addMessage(message);
     setIsTyping(false);
-  }, []);
+  }, [addMessage]);
 
   // Handle WebSocket connection
   const handleConnect = useCallback(() => {
     console.log('Connected to WebSocket server');
-    // Add a welcome message when connected
-    const welcomeMessage: Message = {
-      id: Date.now().toString(),
-      sender: 'ai',
-      content: "Hello! I'm Moon-AI. How can I help you today?",
-      timestamp: new Date()
-    };
-    setMessages([welcomeMessage]);
   }, []);
 
   const handleDisconnect = useCallback(() => {
@@ -56,7 +54,7 @@ export function ChatPanel() {
       content,
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, userMessage]);
+    addMessage(userMessage);
 
     // Show typing indicator
     setIsTyping(true);
@@ -72,13 +70,24 @@ export function ChatPanel() {
           <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : (connectionError ? 'bg-red-500' : 'bg-yellow-500')}`}></span>
           Moon AI Chat
         </h2>
-        {connectionError && (
-          <span className="text-xs text-red-400">{connectionError}</span>
-        )}
-        {!isConnected && !connectionError && (
-          <span className="text-xs text-yellow-400">Connecting...</span>
-        )}
+        <div className="flex flex-col items-end">
+          {connectionError && (
+            <span className="text-xs text-red-400">{connectionError}</span>
+          )}
+          {!isConnected && !connectionError && (
+            <span className="text-xs text-yellow-400">Connecting...</span>
+          )}
+          {isLoading && (
+            <span className="text-xs text-blue-400">Loading history...</span>
+          )}
+        </div>
       </div>
+
+      {error && (
+         <div className="p-2 bg-red-900/50 text-red-200 text-sm text-center">
+            Failed to load chat history: {error}
+         </div>
+      )}
 
       <MessageList messages={messages} />
 
