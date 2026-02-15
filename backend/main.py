@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config.settings import settings
 import logging
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +31,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "moon-ai-backend",
-        "version": "0.1.0"
+        "version": "0.1.0",
+        "timestamp": datetime.now().isoformat()
     }
 
 
