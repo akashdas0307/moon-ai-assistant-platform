@@ -1,6 +1,6 @@
 """Tests for WebSocket functionality."""
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from backend.main import app
 

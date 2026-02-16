@@ -1,7 +1,7 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from backend.core.agent.head_agent import HeadAgent
-from backend.models.message import Message, MessageCreate
+from backend.models.message import Message
 from datetime import datetime
 
 # Mock data
