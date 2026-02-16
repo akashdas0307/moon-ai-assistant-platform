@@ -47,26 +47,57 @@ async def handle_websocket(websocket: WebSocket):
                 if not content:
                     continue
 
-                response_text = ""
-
                 if head_agent:
-                    # Process message through agent (handles saving to DB internally)
-                    response_text = await head_agent.process_message(content)
+                    # Streaming logic
+                    message_id = str(uuid.uuid4())
+
+                    # Send stream start
+                    await manager.send_message(client_id, {
+                        "type": "stream_start",
+                        "message_id": message_id,
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+
+                    accumulated = ""
+                    try:
+                        # Process message through agent (streaming)
+                        async for token in head_agent.process_message(content):
+                            accumulated += token
+                            await manager.send_message(client_id, {
+                                "type": "stream_token",
+                                "message_id": message_id,
+                                "token": token,
+                                "timestamp": datetime.utcnow().isoformat()
+                            })
+                    except Exception as e:
+                        logger.error(f"Error during streaming for {client_id}: {e}")
+                        # If streaming fails, we might want to send an error token or end stream
+                        # For now, let's just log it. The loop will exit.
+
+                    # Send stream end with full message
+                    await manager.send_message(client_id, {
+                        "type": "stream_end",
+                        "message_id": message_id,
+                        "content": accumulated,
+                        "sender": "assistant",
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
+
                 else:
                     # Fallback if agent failed to initialize
                     response_text = f"Agent not configured. Echo: {content}"
                     logger.warning("HeadAgent not available, using fallback echo.")
 
-                # Build response
-                response = {
-                    "type": "message",
-                    "content": response_text,
-                    "sender": "assistant",
-                    "client_id": client_id,
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
+                    # Build response (legacy format)
+                    response = {
+                        "type": "message",
+                        "content": response_text,
+                        "sender": "assistant",
+                        "client_id": client_id,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
 
-                await manager.send_message(client_id, response)
+                    await manager.send_message(client_id, response)
 
             except json.JSONDecodeError:
                 logger.error(f"Invalid JSON from {client_id}: {data}")

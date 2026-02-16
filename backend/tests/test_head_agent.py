@@ -1,7 +1,7 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from backend.core.agent.head_agent import HeadAgent
-from backend.models.message import Message
+from backend.models.message import Message, MessageCreate
 from datetime import datetime
 
 # Mock data
@@ -10,10 +10,16 @@ MOCK_SOUL_MD = "Mock Soul Definition"
 MOCK_USER_MD = "Mock User Profile"
 MOCK_NOTEBOOK_MD = "Line 1\nLine 2\nLine 3"
 
+# Helper for async generator
+async def async_generator(items):
+    for item in items:
+        yield item
+
 @pytest.fixture
 def mock_llm_service():
     service = AsyncMock()
-    service.send_message.return_value = "Mock AI Response"
+    # Default behavior: stream tokens
+    service.send_message.return_value = async_generator(["Mock ", "AI ", "Response"])
     return service
 
 @pytest.fixture
@@ -94,17 +100,21 @@ def test_build_conversation_history(head_agent, mock_db_funcs):
 
 @pytest.mark.asyncio
 async def test_process_message(head_agent, mock_llm_service, mock_db_funcs):
-    """Test processing a message through the full loop."""
+    """Test processing a message through the full loop (streaming)."""
     mock_get, mock_save = mock_db_funcs
 
-    response = await head_agent.process_message("Hello AI")
+    # Collect tokens from generator
+    tokens = []
+    async for token in head_agent.process_message("Hello AI"):
+        tokens.append(token)
 
+    response = "".join(tokens)
     assert response == "Mock AI Response"
 
-    # Verify LLM called
+    # Verify LLM called with stream=True
     mock_llm_service.send_message.assert_called_once()
     call_args = mock_llm_service.send_message.call_args
-    assert call_args.kwargs["stream"] is False
+    assert call_args.kwargs["stream"] is True
     messages = call_args.kwargs["messages"]
     assert messages[0]["role"] == "system"
     assert messages[-1]["role"] == "user"
@@ -112,10 +122,12 @@ async def test_process_message(head_agent, mock_llm_service, mock_db_funcs):
 
     # Verify DB saves (user msg + assistant msg)
     assert mock_save.call_count == 2
-    # Check first save (user)
+
+    # Check first save (user) - happens before streaming
     assert mock_save.call_args_list[0][0][0].sender == "user"
     assert mock_save.call_args_list[0][0][0].content == "Hello AI"
-    # Check second save (assistant)
+
+    # Check second save (assistant) - happens after streaming
     assert mock_save.call_args_list[1][0][0].sender == "assistant"
     assert mock_save.call_args_list[1][0][0].content == "Mock AI Response"
 
@@ -125,25 +137,37 @@ async def test_process_message_no_llm(head_agent, mock_db_funcs):
     head_agent.llm_service = None
     _, mock_save = mock_db_funcs
 
-    response = await head_agent.process_message("Hello")
+    tokens = []
+    async for token in head_agent.process_message("Hello"):
+        tokens.append(token)
+
+    response = "".join(tokens)
 
     assert "not fully configured" in response
     assert "Hello" in response
 
     # Verify DB saves
     assert mock_save.call_count == 2
+    assert mock_save.call_args_list[1][0][0].sender == "assistant"
     assert mock_save.call_args_list[1][0][0].content == response
 
 @pytest.mark.asyncio
 async def test_process_message_llm_error(head_agent, mock_llm_service, mock_db_funcs):
-    """Test handling LLM errors."""
+    """Test handling LLM errors during streaming."""
+    # Mock send_message to raise an exception immediately or during iteration
+    # If send_message returns a coroutine that raises, or returns a generator that raises
     mock_llm_service.send_message.side_effect = Exception("LLM Error")
     _, mock_save = mock_db_funcs
 
-    response = await head_agent.process_message("Hello")
+    tokens = []
+    async for token in head_agent.process_message("Hello"):
+        tokens.append(token)
+
+    response = "".join(tokens)
 
     assert "encountered an issue" in response
 
-    # Verify DB saves
+    # Verify DB saves (user msg + error msg)
     assert mock_save.call_count == 2
+    assert mock_save.call_args_list[1][0][0].sender == "assistant"
     assert mock_save.call_args_list[1][0][0].content == response
