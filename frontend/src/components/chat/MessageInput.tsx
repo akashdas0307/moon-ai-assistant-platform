@@ -10,8 +10,14 @@ export function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
     if (content.trim() && !disabled) {
       onSendMessage(content);
       setContent('');
+
+      // Reset height and refocus input
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
+        // Refocus after a brief delay to ensure state updates
+        setTimeout(() => {
+          textareaRef.current?.focus();
+        }, 10);
       }
     }
   };
