@@ -57,9 +57,12 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
             console.log('Connection confirmed:', data.message);
           } else if (data.type === 'echo' || data.type === 'message') {
             // Convert to Message format and pass to callback
+            // Map 'assistant' sender from backend to 'ai' for frontend
+            const sender = data.sender === 'assistant' ? 'ai' : (data.sender || 'ai');
+
             const message: Message = {
               id: data.timestamp || Date.now().toString(),
-              sender: data.sender || 'ai',
+              sender: sender as 'user' | 'ai',
               content: data.content || data.server_message || data.original_message?.content || '',
               timestamp: new Date(data.timestamp || Date.now())
             };

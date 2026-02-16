@@ -455,3 +455,47 @@ streaming and non-streaming responses with comprehensive error handling.
 ### Next Steps
 - Task 4.3: Agent Think Loop (integrate LLM service with agent logic)
 - Task 4.4: Streaming Responses (connect streaming to WebSocket)
+
+## Task 4.3: Agent Think Loop — 2026-02-16
+
+### Summary
+Created the Head Agent's central think loop that processes user messages through
+the LLM with full agent identity context. The agent now loads its personality
+(SOUL.md), capabilities (AGENT.md), user profile (USER.md), and working notes
+(NOTEBOOK.md) as system context before every response.
+
+### Files Created
+- `backend/core/agent/__init__.py` - Package initialization and exports
+- `backend/core/agent/head_agent.py` - HeadAgent class with think loop logic
+- `backend/tests/test_head_agent.py` - Comprehensive test suite
+
+### Files Modified
+- `backend/api/websocket/handlers.py` - Integrated agent think loop (replaced echo)
+- `frontend/src/hooks/useWebSocket.ts` - Updated message type handling for agent responses
+
+### Key Features
+1. **System Prompt Assembly:** Dynamically loads all 4 core files into structured system prompt
+2. **Conversation History:** Fetches last 20 messages from DB for context continuity
+3. **LLM Integration:** Routes messages through OpenRouter via LLMService
+4. **Graceful Fallback:** Works without LLM API key (returns helpful setup message)
+5. **Error Handling:** Catches LLM errors and returns user-friendly messages
+6. **Message Persistence:** Saves both user and assistant messages to SQLite
+
+### Architecture
+```
+User Message → WebSocket → HeadAgent.process_message() → LLM → Response → WebSocket → Frontend
+                              ├── build_system_prompt()
+                              ├── _build_conversation_history()
+                              ├── LLMService.send_message()
+                              └── save_message() × 2 (user + assistant)
+```
+
+### Testing Results
+- ✅ 9 tests passing in test_head_agent.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+- ✅ Frontend TypeScript type check passing
+
+### Next Steps
+- Task 4.4: Streaming Responses (token-by-token WebSocket streaming)
+- Task 4.5: USER.md Auto-Update (learn user preferences)
