@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Body, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Literal, Optional
 from pydantic import BaseModel
 from backend.services.file_service import FileService

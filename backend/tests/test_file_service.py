@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 from backend.services.file_service import FileService
 from backend.config.settings import settings
 
