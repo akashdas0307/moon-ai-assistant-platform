@@ -120,3 +120,77 @@
 ---
 
 _This log is automatically updated with each task completion. Always reference this file for project context._
+
+## Task 3.4 - [Date: 2026-02-16]
+
+### Implementation Summary
+- **Status:** COMPLETE
+- **Goal:** Create a two-panel resizable layout (Chat + Workspace) with header toggles.
+- **Delivered Components:**
+  - : Resizable split-pane container using `react-resizable-panels`.
+  - : Application header with title and panel visibility toggles.
+  - : Composition of `FileBrowser` (sidebar) and `FileViewer` (main).
+  - Updated `App.tsx`: Logic for responsive panel visibility (toggle vs. exclusive view on mobile).
+
+### Key Features
+1. **Resizable Layout:**
+   - Default split: 40% Chat / 60% Workspace.
+   - Minimum panel size: 30%.
+   - Custom resize handle with hover effect.
+2. **Responsive Logic:**
+   - **Desktop (>1024px):** Both panels visible side-by-side; toggleable.
+   - **Tablet/Mobile (<1024px):** Strict "one panel at a time" mode. Resizing window updates state to prevent squeezing.
+   - **Mobile (<768px):** Layout direction switches to vertical (fallback), though single-panel mode is enforced.
+3. **Type Safety Fixes:**
+   - Addressed CI failure in `react-resizable-panels` v4.x usage.
+   - Replaced `direction` with `orientation` in `PanelGroup`.
+   - Removed unsupported `order` prop from `Panel`.
+
+### Technical Challenges & Solutions
+- **Issue:** TypeScript CI failed with "Property 'direction' does not exist on type...".
+- **Root Cause:** `react-resizable-panels` v4 changed API from `direction` to `orientation` for `Group`, and removed explicit `order` prop for `Panel` (relying on DOM order).
+- **Solution:** Updated  to use correct v4 props.
+
+### Modules Affected
+- `frontend/src/App.tsx` (Modified)
+- `frontend/src/components/layout/MainLayout.tsx` (New)
+- `frontend/src/components/layout/Header.tsx` (New)
+- `frontend/src/components/workspace/WorkspacePanel.tsx` (New)
+- `frontend/src/components/workspace/FileBrowser.tsx` (Modified styling)
+
+## Task 3.4 - [Date: 2026-02-16]
+
+### Implementation Summary
+- **Status:** COMPLETE
+- **Goal:** Create a two-panel resizable layout (Chat + Workspace) with header toggles.
+- **Delivered Components:**
+  - `MainLayout.tsx`: Resizable split-pane container using `react-resizable-panels`.
+  - `Header.tsx`: Application header with title and panel visibility toggles.
+  - `WorkspacePanel.tsx`: Composition of `FileBrowser` (sidebar) and `FileViewer` (main).
+  - Updated `App.tsx`: Logic for responsive panel visibility (toggle vs. exclusive view on mobile).
+
+### Key Features
+1. **Resizable Layout:**
+   - Default split: 40% Chat / 60% Workspace.
+   - Minimum panel size: 30%.
+   - Custom resize handle with hover effect.
+2. **Responsive Logic:**
+   - **Desktop (>1024px):** Both panels visible side-by-side; toggleable.
+   - **Tablet/Mobile (<1024px):** Strict "one panel at a time" mode. Resizing window updates state to prevent squeezing.
+   - **Mobile (<768px):** Layout direction switches to vertical (fallback), though single-panel mode is enforced.
+3. **Type Safety Fixes:**
+   - Addressed CI failure in `react-resizable-panels` v4.x usage.
+   - Replaced `direction` with `orientation` in `PanelGroup`.
+   - Removed unsupported `order` prop from `Panel`.
+
+### Technical Challenges & Solutions
+- **Issue:** TypeScript CI failed with "Property 'direction' does not exist on type...".
+- **Root Cause:** `react-resizable-panels` v4 changed API from `direction` to `orientation` for `Group`, and removed explicit `order` prop for `Panel` (relying on DOM order).
+- **Solution:** Updated `MainLayout.tsx` to use correct v4 props.
+
+### Modules Affected
+- `frontend/src/App.tsx` (Modified)
+- `frontend/src/components/layout/MainLayout.tsx` (New)
+- `frontend/src/components/layout/Header.tsx` (New)
+- `frontend/src/components/workspace/WorkspacePanel.tsx` (New)
+- `frontend/src/components/workspace/FileBrowser.tsx` (Modified styling)
