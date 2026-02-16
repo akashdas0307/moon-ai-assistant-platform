@@ -1,11 +1,10 @@
 import pytest
-import sqlite3
 import os
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from backend.core.agent.head_agent import HeadAgent
 from backend.models.message import MessageCreate
-from backend.services.message_service import save_message, get_recent_messages, clear_all_messages
-from backend.database.db import get_db_connection, init_db
+from backend.services.message_service import save_message, get_recent_messages
+from backend.database.db import init_db
 
 # Override DB for testing
 import backend.database.db
