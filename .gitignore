@@ -23,3 +23,7 @@ Thumbs.db
 # Backend Data
 backend/data/*
 !backend/data/.gitkeep
+
+# Backend logs
+backend/*.log
+*.log
