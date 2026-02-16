@@ -10,21 +10,27 @@ export function MessageList({ messages }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
   };
 
-  // Auto-scroll on new messages
+  // Smart auto-scroll: only scroll if user is at bottom
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (!isUserScrolling) {
+      scrollToBottom();
+    }
+  }, [messages, isUserScrolling]);
 
-  // Handle scroll event to show/hide scroll button
+  // Handle scroll event to detect user scrolling and show/hide scroll button
   const handleScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
       const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+      // Update user scrolling state
+      setIsUserScrolling(!isNearBottom);
       setShowScrollButton(!isNearBottom);
     }
   };
@@ -48,11 +54,12 @@ export function MessageList({ messages }: MessageListProps) {
   }
 
   return (
-    <div className="relative flex-1 overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden">
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="h-full overflow-y-auto p-4 md:p-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent space-y-6"
+        style={{ minHeight: 0 }}
       >
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
