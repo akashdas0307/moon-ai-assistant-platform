@@ -9,11 +9,19 @@ import { TextViewer } from './viewers/TextViewer';
 import { getLanguageFromExtension } from '../../utils/fileTypes';
 
 export const FileViewer: React.FC = () => {
-  const { activeFilePath, openFiles } = useWorkspaceStore();
+  const { activeFilePath, openFiles, isLoadingFile } = useWorkspaceStore();
   const activeFile = openFiles.find(f => f.path === activeFilePath);
 
   const renderContent = () => {
     if (!activeFile) {
+      if (isLoadingFile) {
+          return (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              <Loader2 size={32} className="animate-spin mb-2" />
+              <span className="ml-2">Loading file...</span>
+            </div>
+          );
+      }
       return (
         <div className="flex flex-col items-center justify-center h-full text-gray-500">
           <FileX size={48} className="mb-4 opacity-50" />
@@ -62,7 +70,7 @@ export const FileViewer: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#1e1e1e] overflow-hidden border-l border-[#404040]">
       <FileViewerTabs />
       <div className="flex-1 overflow-hidden relative">
         {renderContent()}
