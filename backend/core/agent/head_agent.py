@@ -4,6 +4,8 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Optional, AsyncGenerator
 import traceback
+import re
+from datetime import datetime
 
 from backend.core.llm.service import LLMService, llm_service as global_llm_service
 from backend.services.message_service import get_recent_messages, save_message
@@ -131,6 +133,136 @@ class HeadAgent:
 
         return "\n".join(lines[-num_lines:])
 
+    def _append_notebook_entry(self, content: str, tag: str = "[PENDING]") -> None:
+        """
+        Append a new entry to NOTEBOOK.md with timestamp and tag.
+
+        Args:
+            content: The note content
+            tag: Entry tag ([PENDING], [COMPLETED], [INFO])
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        entry = f"{tag} {timestamp} - {content}"
+
+        current_content = self._read_file("NOTEBOOK.md")
+        if current_content and not current_content.endswith("\n"):
+            entry = f"\n{entry}"
+        elif not current_content:
+            entry = f"{entry}"
+        else:
+            entry = f"{entry}" # Already has newline at end of file usually, but append needs care
+
+        # Append to file
+        # We use read/write because _write_file overwrites.
+        # We should append.
+        full_content = current_content + ("\n" if current_content and not current_content.endswith("\n") else "") + entry
+        self._write_file("NOTEBOOK.md", full_content)
+        logger.info(f"Appended notebook entry: {entry}")
+
+    def _find_entry_index(self, keyword: str) -> int:
+        """
+        Find the line index of a pending notebook entry matching the keyword.
+
+        Args:
+            keyword: Text to search for.
+
+        Returns:
+            Line index (0-based) or -1 if not found.
+        """
+        content = self._read_file("NOTEBOOK.md")
+        if not content:
+            return -1
+
+        lines = content.splitlines()
+        keyword_lower = keyword.lower()
+
+        # Prefer exact match or significant overlap
+        # Logic: find lines with [PENDING] that contain keyword
+        for i, line in enumerate(lines):
+            if "[PENDING]" in line and keyword_lower in line.lower():
+                return i
+
+        return -1
+
+    def _mark_notebook_completed(self, entry_index: int) -> None:
+        """
+        Mark a specific notebook entry as [COMPLETED].
+
+        Args:
+            entry_index: Line number of the entry to mark (0-indexed)
+        """
+        content = self._read_file("NOTEBOOK.md")
+        if not content:
+            return
+
+        lines = content.splitlines()
+        if entry_index < 0 or entry_index >= len(lines):
+            logger.warning(f"Invalid notebook entry index: {entry_index}")
+            return
+
+        line = lines[entry_index]
+        if "[PENDING]" in line:
+            lines[entry_index] = line.replace("[PENDING]", "[COMPLETED]")
+            self._write_file("NOTEBOOK.md", "\n".join(lines))
+            logger.info(f"Marked notebook entry {entry_index} as completed")
+
+            # Auto-archive
+            self._archive_completed_entries()
+
+    def _archive_completed_entries(self) -> None:
+        """
+        Move all [COMPLETED] entries from NOTEBOOK.md to archived_notebook.md.
+        Auto-called after marking items complete.
+        """
+        content = self._read_file("NOTEBOOK.md")
+        if not content:
+            return
+
+        lines = content.splitlines()
+        pending_lines = []
+        completed_lines = []
+
+        for line in lines:
+            if "[COMPLETED]" in line:
+                completed_lines.append(line)
+            else:
+                pending_lines.append(line)
+
+        if not completed_lines:
+            return
+
+        # Write back NOTEBOOK.md
+        self._write_file("NOTEBOOK.md", "\n".join(pending_lines))
+
+        # Append to archived_notebook.md
+        archive_content = self._read_file("archived_notebook.md")
+        if not archive_content:
+            archive_content = "# Archived Notebook Entries\n\n"
+
+        new_archive_content = archive_content + ("\n" if archive_content and not archive_content.endswith("\n") else "") + "\n".join(completed_lines)
+        self._write_file("archived_notebook.md", new_archive_content)
+        logger.info(f"Archived {len(completed_lines)} entries")
+
+    def _read_archived_notebook(self, num_lines: int = 15) -> str:
+        """
+        Read last N lines of archived_notebook.md for SPARK heartbeat checks.
+
+        Args:
+            num_lines: Number of lines to return from end
+
+        Returns:
+            String containing last N lines of archived notebook
+        """
+        content = self._read_file("archived_notebook.md")
+        if not content:
+            return ""
+
+        lines = content.splitlines()
+        if len(lines) <= num_lines:
+            return content
+
+        return "\n".join(lines[-num_lines:])
+
     def build_system_prompt(self) -> str:
         """
         Construct the system prompt from agent core files.
@@ -169,6 +301,14 @@ class HeadAgent:
 - Reference USER profile to personalize responses
 - Check NOTEBOOK for any pending tasks or context
 - Keep responses helpful, direct, and conversational
+
+=== NOTEBOOK USAGE INSTRUCTIONS ===
+You can write notes to your NOTEBOOK.md for future reference using special syntax:
+- To add a note: Include [NOTE: your note content here] anywhere in your response
+- To mark a task complete: Include [COMPLETE: task description or keyword]
+- Notes are automatically tagged with [PENDING] and timestamped
+- Completed items are automatically archived to archived_notebook.md
+- Keep notes brief and actionable for future reference
 """
         return prompt
 
@@ -369,8 +509,32 @@ class HeadAgent:
                 accumulated_response += error_msg
                 yield error_msg
 
-        # 4. Save assistant response to DB
+        # 4. Process notebook commands and save response
         if accumulated_response:
+            # Handle [NOTE: ...]
+            # Use non-greedy match .*? to capture individual notes
+            note_matches = re.findall(r"\[NOTE:(.*?)\]", accumulated_response, re.IGNORECASE)
+            for note in note_matches:
+                self._append_notebook_entry(note.strip())
+                # Remove from response
+                # Escape the note for regex replacement
+                escaped_note = re.escape(note)
+                # Use raw string for regex pattern
+                accumulated_response = re.sub(f"\[NOTE:{escaped_note}\]", "", accumulated_response, flags=re.IGNORECASE)
+
+            # Handle [COMPLETE: ...]
+            complete_matches = re.findall(r"\[COMPLETE:(.*?)\]", accumulated_response, re.IGNORECASE)
+            for keyword in complete_matches:
+                keyword = keyword.strip()
+                idx = self._find_entry_index(keyword)
+                if idx != -1:
+                    self._mark_notebook_completed(idx)
+                else:
+                    logger.warning(f"Could not find notebook entry to complete: {keyword}")
+                # Remove from response
+                escaped_keyword = re.escape(keyword)
+                accumulated_response = re.sub(f"\[COMPLETE:{escaped_keyword}\]", "", accumulated_response, flags=re.IGNORECASE)
+
             try:
                 save_message(MessageCreate(sender="assistant", content=accumulated_response))
             except Exception as e:

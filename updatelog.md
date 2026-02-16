@@ -588,3 +588,43 @@ Tests passed because they mocked `get_recent_messages`, hiding the fact that imp
 - ✅ Ruff linting clean
 - ✅ Manual testing: Agent processes 5+ messages without crashes
 - ✅ USER.md updates correctly after 5 messages
+
+## Task 4.6: NOTEBOOK.md Operations — [Date: 2026-02-17]
+
+### Summary
+Implemented agent self-note-taking system with [PENDING]/[COMPLETED] tag management and automatic archival. The agent can now write persistent notes to track tasks, context, and important information across conversation sessions.
+
+### Files Created
+- `backend/agents/head-agent/archived_notebook.md` - Archive storage for completed entries
+- `backend/tests/test_notebook_operations.py` - Comprehensive test suite for notebook operations
+
+### Files Modified
+- `backend/core/agent/head_agent.py` - Added 4 notebook operation methods + special output parsing
+- System prompt now includes notebook usage instructions
+
+### Key Features
+1. **Self-Note-Taking:** Agent writes notes using [NOTE: content] syntax in responses
+2. **Task Tracking:** [PENDING] tag for active items, [COMPLETED] for done items
+3. **Auto-Archival:** Completed entries automatically move to archived_notebook.md
+4. **Timestamp Tracking:** All entries include YYYY-MM-DD HH:MM timestamps
+5. **Clean Notebook:** Old completed items archived to keep NOTEBOOK.md focused
+6. **SPARK Integration:** archived_notebook.md available for SPARK heartbeat checks
+7. **Invisible to User:** Note commands extracted from responses before display
+
+### Architecture
+```
+Agent Response → Output Parser → [NOTE:...] detected → _append_notebook_entry()
+                              → [COMPLETE:...] detected → _mark_notebook_completed()
+                                                        → _archive_completed_entries()
+```
+
+### Testing Results
+- ✅ 7 tests passing in test_notebook_operations.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+- ✅ Manual testing: Agent successfully writes and manages notes
+- ✅ Integration test: Full workflow (add → complete → archive) works
+
+### Next Steps
+- Phase 5: Communication Book (blockchain-inspired message chain with com_ids)
+- Task 5.1: Communication DB Schema
