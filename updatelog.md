@@ -499,3 +499,13 @@ User Message → WebSocket → HeadAgent.process_message() → LLM → Response 
 ### Next Steps
 - Task 4.4: Streaming Responses (token-by-token WebSocket streaming)
 - Task 4.5: USER.md Auto-Update (learn user preferences)
+
+### CI Fix - 2026-02-16
+- **Issue:** CI pipeline hung at 95% due to `backend/tests/test_websocket.py` waiting indefinitely for a response type that changed.
+- **Root Cause:** `test_websocket.py` was expecting "echo" response but server sends "message" (via HeadAgent). Also, unmocked HeadAgent/LLMService caused blocking/hanging behavior in tests.
+- **Fix:**
+    1. Added `pytest-timeout==2.2.0` to `backend/requirements.txt` to prevent future hangs.
+    2. Modified `backend/tests/test_websocket.py` to patch `HeadAgent.process_message`.
+    3. Updated test assertions to expect `type="message"` and `sender="assistant"`.
+    4. Added `@pytest.mark.timeout(30)` to WebSocket tests.
+- **Verification:** All 44 tests passed in < 4 seconds.
