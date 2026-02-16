@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 from openai import AsyncOpenAI
 from backend.config.settings import settings
 import logging
