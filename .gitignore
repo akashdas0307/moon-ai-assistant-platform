@@ -27,3 +27,8 @@ backend/data/*
 # Backend logs
 backend/*.log
 *.log
+
+# SPARK logs (keep directory but ignore log files)
+backend/agents/head-agent/spark_logs/*.log
+backend/agents/head-agent/spark_logs/*.txt
+!backend/agents/head-agent/spark_logs/.gitkeep
