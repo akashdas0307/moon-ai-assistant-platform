@@ -1,38 +1,81 @@
-import { StatusIndicator } from './components/StatusIndicator';
+import { useState, useEffect } from 'react';
+import { MainLayout } from './components/layout/MainLayout';
+import { Header } from './components/layout/Header';
 import { ChatPanel } from './components/chat/ChatPanel';
-import { FileBrowser } from './components/workspace/FileBrowser';
-import { FileViewer } from './components/workspace/FileViewer';
+import { WorkspacePanel } from './components/workspace/WorkspacePanel';
 
 function App() {
+  const [chatVisible, setChatVisible] = useState(true);
+  const [workspaceVisible, setWorkspaceVisible] = useState(true);
+
+  // Responsive: One panel at a time on mobile/tablet
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        // Tablet/Mobile: Ensure only one is visible if both were active
+        if (chatVisible && workspaceVisible) {
+           setChatVisible(false); // Default to workspace being main view
+        }
+      }
+    };
+
+    // Run initially to set correct state
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [chatVisible, workspaceVisible]);
+
+  const handleToggleChat = () => {
+    if (window.innerWidth < 1024) {
+       // Mobile/Tablet: Switch to Chat exclusively
+       setChatVisible(true);
+       setWorkspaceVisible(false);
+    } else {
+       // Desktop: Toggle
+       if (!chatVisible) {
+         setChatVisible(true);
+       } else {
+         // Prevent hiding both - only hide if workspace is visible
+         if (workspaceVisible) {
+           setChatVisible(false);
+         }
+       }
+    }
+  };
+
+  const handleToggleWorkspace = () => {
+    if (window.innerWidth < 1024) {
+       // Mobile/Tablet: Switch to Workspace exclusively
+       setWorkspaceVisible(true);
+       setChatVisible(false);
+    } else {
+       // Desktop: Toggle
+       if (!workspaceVisible) {
+         setWorkspaceVisible(true);
+       } else {
+         // Prevent hiding both - only hide if chat is visible
+         if (chatVisible) {
+           setWorkspaceVisible(false);
+         }
+       }
+    }
+  };
+
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="border-b border-gray-800 px-6 py-3 flex-none bg-[#1a1a1a]">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            Moon AI
-          </h1>
-          <StatusIndicator />
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar: File Browser */}
-        <FileBrowser />
-
-        {/* Workspace Area: File Viewer */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[#0f0f0f] border-r border-[#404040]">
-           <FileViewer />
-        </main>
-
-        {/* Right Sidebar: Chat Area */}
-        <aside className="w-96 flex-none bg-[#0f0f0f] border-l border-[#404040]">
-           <div className="h-full flex flex-col">
-              <ChatPanel />
-           </div>
-        </aside>
-      </div>
+    <div className="flex flex-col h-screen bg-[#1a1a1a] overflow-hidden text-white">
+      <Header
+        onToggleChatPanel={handleToggleChat}
+        onToggleWorkspacePanel={handleToggleWorkspace}
+        chatPanelVisible={chatVisible}
+        workspacePanelVisible={workspaceVisible}
+      />
+      <MainLayout
+        chatPanel={<ChatPanel />}
+        workspacePanel={<WorkspacePanel visible={workspaceVisible} />}
+        chatVisible={chatVisible}
+        workspaceVisible={workspaceVisible}
+      />
     </div>
   );
 }

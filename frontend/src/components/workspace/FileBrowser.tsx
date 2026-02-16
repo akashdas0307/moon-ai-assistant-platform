@@ -148,7 +148,7 @@ export const FileBrowser: React.FC = () => {
   // If loading initially and no files, show skeleton
   if (!initialized && isLoading && files.length === 0) {
     return (
-      <div className="flex flex-col h-full bg-[#1a1a1a] border-r border-[#404040] w-64 p-4">
+      <div className="flex flex-col h-full bg-[#1a1a1a] border-r border-[#404040] w-full p-4">
          <div className="flex items-center justify-between mb-4">
            <div className="h-6 w-24 bg-gray-800 rounded animate-pulse"></div>
          </div>
@@ -162,7 +162,7 @@ export const FileBrowser: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a1a] border-r border-[#404040] w-64 flex-none">
+    <div className="flex flex-col h-full bg-[#1a1a1a] border-r border-[#404040] w-full">
       <div className="flex items-center justify-between p-3 border-b border-[#404040]">
         <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">Workspace</h2>
         <button
