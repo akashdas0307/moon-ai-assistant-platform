@@ -10,6 +10,10 @@ class FileService:
     def __init__(self):
         self.workspace_root = settings.WORKSPACE_DIR
 
+    def get_absolute_path(self, path: str) -> Path:
+        """Get the absolute path of a file or folder, verifying it's within workspace"""
+        return self._safe_join(path)
+
     def _safe_join(self, path: str) -> Path:
         """
         Safely join paths and prevent traversal attacks.

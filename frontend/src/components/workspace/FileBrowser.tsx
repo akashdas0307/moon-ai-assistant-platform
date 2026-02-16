@@ -52,7 +52,7 @@ interface FileTreeItemProps {
 }
 
 const FileTreeItem: React.FC<FileTreeItemProps> = ({ item, level }) => {
-  const { files, selectedFile, selectFile, loadFiles } = useWorkspaceStore();
+  const { files, selectedFile, selectFile, loadFiles, openFile } = useWorkspaceStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -62,18 +62,23 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ item, level }) => {
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (item.type !== 'directory') {
-      selectFile(item.path);
+
+    // Select the file/folder visually
+    selectFile(item.path);
+
+    if (item.type === 'file') {
+      // Open the file in the viewer
+      openFile(item.path);
       return;
     }
 
+    // Toggle folder expansion
     if (!isExpanded) {
       setLoading(true);
       await loadFiles(item.path);
       setLoading(false);
     }
     setIsExpanded(!isExpanded);
-    selectFile(item.path);
   };
 
   return (
@@ -157,7 +162,7 @@ export const FileBrowser: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a1a] border-r border-[#404040] w-64">
+    <div className="flex flex-col h-full bg-[#1a1a1a] border-r border-[#404040] w-64 flex-none">
       <div className="flex items-center justify-between p-3 border-b border-[#404040]">
         <h2 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">Workspace</h2>
         <button

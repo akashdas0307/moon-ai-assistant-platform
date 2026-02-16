@@ -1,6 +1,7 @@
 import { StatusIndicator } from './components/StatusIndicator';
 import { ChatPanel } from './components/chat/ChatPanel';
 import { FileBrowser } from './components/workspace/FileBrowser';
+import { FileViewer } from './components/workspace/FileViewer';
 
 function App() {
   return (
@@ -17,17 +18,20 @@ function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-64 flex-none border-r border-gray-800 bg-[#1a1a1a]">
-          <FileBrowser />
-        </aside>
+        {/* Sidebar: File Browser */}
+        <FileBrowser />
 
-        {/* Chat Area */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[#0f0f0f]">
-          <div className="flex-1 p-4 overflow-hidden flex flex-col">
-            <ChatPanel />
-          </div>
+        {/* Workspace Area: File Viewer */}
+        <main className="flex-1 flex flex-col min-w-0 bg-[#0f0f0f] border-r border-[#404040]">
+           <FileViewer />
         </main>
+
+        {/* Right Sidebar: Chat Area */}
+        <aside className="w-96 flex-none bg-[#0f0f0f] border-l border-[#404040]">
+           <div className="h-full flex flex-col">
+              <ChatPanel />
+           </div>
+        </aside>
       </div>
     </div>
   );
