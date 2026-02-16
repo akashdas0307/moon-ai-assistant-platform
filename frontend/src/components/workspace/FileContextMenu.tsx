@@ -12,7 +12,7 @@ interface FileContextMenuProps {
   x: number;
   y: number;
   targetType: 'file' | 'directory';
-  targetPath: string;
+  targetPath: string; // Kept for interface consistency, even if unused directly in rendering
   onClose: () => void;
   onNewFile: () => void;
   onNewFolder: () => void;
@@ -26,7 +26,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
   x,
   y,
   targetType,
-  targetPath,
+  // targetPath, // REMOVED from destructuring to avoid unused variable warning
   onClose,
   onNewFile,
   onNewFolder,
