@@ -455,3 +455,57 @@ streaming and non-streaming responses with comprehensive error handling.
 ### Next Steps
 - Task 4.3: Agent Think Loop (integrate LLM service with agent logic)
 - Task 4.4: Streaming Responses (connect streaming to WebSocket)
+
+## Task 4.3: Agent Think Loop — 2026-02-16
+
+### Summary
+Created the Head Agent's central think loop that processes user messages through
+the LLM with full agent identity context. The agent now loads its personality
+(SOUL.md), capabilities (AGENT.md), user profile (USER.md), and working notes
+(NOTEBOOK.md) as system context before every response.
+
+### Files Created
+- `backend/core/agent/__init__.py` - Package initialization and exports
+- `backend/core/agent/head_agent.py` - HeadAgent class with think loop logic
+- `backend/tests/test_head_agent.py` - Comprehensive test suite
+
+### Files Modified
+- `backend/api/websocket/handlers.py` - Integrated agent think loop (replaced echo)
+- `frontend/src/hooks/useWebSocket.ts` - Updated message type handling for agent responses
+
+### Key Features
+1. **System Prompt Assembly:** Dynamically loads all 4 core files into structured system prompt
+2. **Conversation History:** Fetches last 20 messages from DB for context continuity
+3. **LLM Integration:** Routes messages through OpenRouter via LLMService
+4. **Graceful Fallback:** Works without LLM API key (returns helpful setup message)
+5. **Error Handling:** Catches LLM errors and returns user-friendly messages
+6. **Message Persistence:** Saves both user and assistant messages to SQLite
+
+### Architecture
+```
+User Message → WebSocket → HeadAgent.process_message() → LLM → Response → WebSocket → Frontend
+                              ├── build_system_prompt()
+                              ├── _build_conversation_history()
+                              ├── LLMService.send_message()
+                              └── save_message() × 2 (user + assistant)
+```
+
+### Testing Results
+- ✅ 9 tests passing in test_head_agent.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+- ✅ Frontend TypeScript type check passing
+
+### Next Steps
+- Task 4.4: Streaming Responses (token-by-token WebSocket streaming)
+- Task 4.5: USER.md Auto-Update (learn user preferences)
+
+### CI Fix - 2026-02-16
+- **Issue:** CI pipeline hung at 95% due to `backend/tests/test_websocket.py` waiting indefinitely for a response type that changed.
+- **Root Cause:** `test_websocket.py` was expecting "echo" response but server sends "message" (via HeadAgent). Also, unmocked HeadAgent/LLMService caused blocking/hanging behavior in tests.
+- **Fix:**
+    1. Added `pytest-timeout==2.2.0` to `backend/requirements.txt` to prevent future hangs.
+    2. Modified `backend/tests/test_websocket.py` to patch `HeadAgent.process_message`.
+    3. Updated test assertions to expect `type="message"` and `sender="assistant"`.
+    4. Added `@pytest.mark.timeout(30)` to WebSocket tests.
+- **Verification:** All 44 tests passed in < 4 seconds.

@@ -5,8 +5,7 @@ import json
 import logging
 import uuid
 from .connection import manager
-from backend.services.message_service import save_message
-from backend.models.message import MessageCreate
+from backend.core.agent import head_agent
 
 logger = logging.getLogger(__name__)
 
@@ -45,28 +44,26 @@ async def handle_websocket(websocket: WebSocket):
 
                 content = message_data.get('content', '')
 
-                # Save user message
-                if content:
-                    try:
-                        save_message(MessageCreate(sender="user", content=content))
-                    except Exception as e:
-                        logger.error(f"Failed to save user message: {e}")
+                if not content:
+                    continue
 
-                response_text = f"Server received: {content}"
+                response_text = ""
 
-                # Save assistant response
-                try:
-                    save_message(MessageCreate(sender="assistant", content=response_text))
-                except Exception as e:
-                    logger.error(f"Failed to save assistant message: {e}")
+                if head_agent:
+                    # Process message through agent (handles saving to DB internally)
+                    response_text = await head_agent.process_message(content)
+                else:
+                    # Fallback if agent failed to initialize
+                    response_text = f"Agent not configured. Echo: {content}"
+                    logger.warning("HeadAgent not available, using fallback echo.")
 
-                # Echo the message back with metadata
+                # Build response
                 response = {
-                    "type": "echo",
-                    "original_message": message_data,
+                    "type": "message",
+                    "content": response_text,
+                    "sender": "assistant",
                     "client_id": client_id,
                     "timestamp": datetime.utcnow().isoformat(),
-                    "server_message": response_text
                 }
 
                 await manager.send_message(client_id, response)
