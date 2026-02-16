@@ -397,3 +397,61 @@ Created comprehensive documentation: `CHAT_UI_FIXES.md`
 
 ### Impact
 The chat interface now matches professional standards of applications like Claude Desktop with smooth, intuitive interactions and polished visual feedback.
+
+## Task 4.2: LLM Service (OpenRouter) - [Date: 2026-02-16]
+
+### Summary
+Created the LLM service integrated with OpenRouter API, providing access to multiple
+AI models (Claude, GPT-4, Gemini, etc.) through a unified interface. Supports both
+streaming and non-streaming responses with comprehensive error handling.
+
+### Files Created
+- `backend/core/llm/service.py` - Main LLM service with OpenRouter integration
+- `backend/core/llm/__init__.py` - Package initialization and exports
+- `backend/tests/test_llm_service.py` - Comprehensive unit tests (5 tests)
+
+### Files Modified
+- `backend/requirements.txt` - Added openai>=1.0.0
+- `backend/pyproject.toml` - Added openai and httpx dependencies
+- `.env.example` - Added OpenRouter configuration with model examples
+
+### Key Features
+1. **OpenRouter Integration:** Access to 100+ AI models through single API
+2. **Streaming Support:** Async generator for token-by-token responses
+3. **Configuration Validation:** Checks for required API key and model name
+4. **Custom Headers:** App identification for OpenRouter analytics
+5. **Error Handling:** Comprehensive handling of network and API errors
+6. **Type Safety:** Full type hints throughout
+7. **Testing:** 5 unit tests with mocked API calls
+
+### Configuration
+- **API Provider:** OpenRouter (https://openrouter.ai)
+- **Default Model:** anthropic/claude-3.5-sonnet
+- **Base URL:** https://openrouter.ai/api/v1
+- **Headers:** Includes app title and referer for tracking
+
+### Technical Details
+- Used AsyncOpenAI client for async/await support
+- Implemented both streaming and non-streaming message sending
+- Added validation for required configuration on initialization
+- Designed for easy model switching via environment variables
+- Logged all operations for debugging and monitoring
+
+### Supported Models
+- Anthropic Claude (Opus, Sonnet, Haiku)
+- OpenAI GPT-4 and GPT-3.5
+- Google Gemini Pro
+- And 100+ more models via OpenRouter
+
+### Testing Results
+- ✅ Service initialization test passed
+- ✅ Configuration validation test passed
+- ✅ Non-streaming message test passed
+- ✅ Streaming message test passed
+- ✅ Error handling test passed
+- ✅ All 5 tests passing
+- ✅ CI pipeline passing
+
+### Next Steps
+- Task 4.3: Agent Think Loop (integrate LLM service with agent logic)
+- Task 4.4: Streaming Responses (connect streaming to WebSocket)
