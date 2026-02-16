@@ -38,9 +38,20 @@ export const useMessageStore = create<MessageState>((set) => ({
     }
   },
 
-  addMessage: (message) => set((state) => ({
-    messages: [...state.messages, message]
-  })),
+  addMessage: (message) => set((state) => {
+    // Deduplicate: check if message with same ID already exists
+    const messageId = message.id;
+    const isDuplicate = state.messages.some(m => m.id === messageId);
+
+    if (isDuplicate) {
+      console.warn(`⚠️ Duplicate message blocked: ${messageId}`);
+      return state; // Don't add duplicate
+    }
+
+    return {
+      messages: [...state.messages, message]
+    };
+  }),
 
   setMessages: (messages) => set({ messages }),
 }));

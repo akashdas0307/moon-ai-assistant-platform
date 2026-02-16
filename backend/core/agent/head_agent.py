@@ -421,7 +421,7 @@ You can write notes to your NOTEBOOK.md for future reference using special synta
             analysis = await self.llm_service.send_message(
                 messages=messages,
                 stream=False,
-                model="gpt-3.5-turbo" # Explicitly use cheap model
+                # model="openrouter/free" # Explicitly use cheap model
             )
 
             # 4. Parse & Merge
@@ -520,7 +520,7 @@ You can write notes to your NOTEBOOK.md for future reference using special synta
                 # Escape the note for regex replacement
                 escaped_note = re.escape(note)
                 # Use raw string for regex pattern
-                accumulated_response = re.sub(f"\[NOTE:{escaped_note}\]", "", accumulated_response, flags=re.IGNORECASE)
+                accumulated_response = re.sub(rf"\[NOTE:{escaped_note}\]", "", accumulated_response, flags=re.IGNORECASE)
 
             # Handle [COMPLETE: ...]
             complete_matches = re.findall(r"\[COMPLETE:(.*?)\]", accumulated_response, re.IGNORECASE)
@@ -533,7 +533,7 @@ You can write notes to your NOTEBOOK.md for future reference using special synta
                     logger.warning(f"Could not find notebook entry to complete: {keyword}")
                 # Remove from response
                 escaped_keyword = re.escape(keyword)
-                accumulated_response = re.sub(f"\[COMPLETE:{escaped_keyword}\]", "", accumulated_response, flags=re.IGNORECASE)
+                accumulated_response = re.sub(rf"\[COMPLETE:{escaped_keyword}\]", "", accumulated_response, flags=re.IGNORECASE)
 
             try:
                 save_message(MessageCreate(sender="assistant", content=accumulated_response))

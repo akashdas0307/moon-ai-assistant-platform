@@ -1,8 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(source venv/Scripts/activate)",
-      "Bash(pip install:*)"
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(python -c:*)",
+      "Bash(python:*)",
+      "Bash(PYTHONPATH=. python:*)",
+      "Bash(taskkill:*)",
+      "Bash(PYTHONPATH=\"c:/Users/KIIT0001/Desktop/Moon/moon-ai-assistant-platform\" python:*)",
+      "Bash(PYTHONPATH=\"c:/Users/KIIT0001/Desktop/Moon/moon-ai-assistant-platform\" python -c:*)",
+      "Bash(PYTHONPATH=\"c:/Users/KIIT0001/Desktop/Moon/moon-ai-assistant-platform\" PYTHONIOENCODING=utf-8 python:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

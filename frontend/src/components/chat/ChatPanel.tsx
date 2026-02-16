@@ -11,11 +11,20 @@ export function ChatPanel() {
   const { messages, addMessage, loadMessages, error } = useMessageStore();
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessages, setStreamingMessages] = useState<Map<string, Message>>(new Map());
+  const [pendingFinalizeMessage, setPendingFinalizeMessage] = useState<Message | null>(null);
 
   // Load messages on mount
   useEffect(() => {
     loadMessages();
   }, [loadMessages]);
+
+  // Handle pending finalized message from stream end
+  useEffect(() => {
+    if (pendingFinalizeMessage) {
+      addMessage(pendingFinalizeMessage);
+      setPendingFinalizeMessage(null);
+    }
+  }, [pendingFinalizeMessage, addMessage]);
 
   // Handle incoming WebSocket messages
   const handleWebSocketMessage = useCallback((message: Message) => {
@@ -61,19 +70,18 @@ export function ChatPanel() {
       const map = new Map(prev);
       const msg = map.get(messageId);
       if (msg) {
-        // Add finalized message to store
-        // Ensure we use the full content provided in stream_end to guarantee integrity
-        // although msg.content should be same.
-        addMessage({
+        // Queue the finalized message to be added via effect
+        const finalizedMsg = {
           ...msg,
           content: fullContent || msg.content,
           isStreaming: false
-        });
+        };
+        setPendingFinalizeMessage(finalizedMsg);
         map.delete(messageId);
       }
       return map;
     });
-  }, [addMessage]);
+  }, []);
 
   const handleConnect = useCallback(() => {
     console.log('Connected to WebSocket server');

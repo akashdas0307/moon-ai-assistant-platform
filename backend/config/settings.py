@@ -1,10 +1,17 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import Optional
 from pathlib import Path
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = ConfigDict(
+        env_file=(".env", "backend/.env"),
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     # Server
     backend_port: int = 8000
@@ -26,10 +33,6 @@ class Settings(BaseSettings):
         ".md", ".txt", ".json", ".yaml", ".yml",
         ".html", ".css", ".sh", ".env"
     }
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
