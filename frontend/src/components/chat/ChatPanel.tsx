@@ -10,6 +10,7 @@ import { useMessageStore } from '../../stores/messageStore';
 export function ChatPanel() {
   const { messages, addMessage, loadMessages, error } = useMessageStore();
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingMessages, setStreamingMessages] = useState<Map<string, Message>>(new Map());
 
   // Load messages on mount
   useEffect(() => {
@@ -18,8 +19,60 @@ export function ChatPanel() {
 
   // Handle incoming WebSocket messages
   const handleWebSocketMessage = useCallback((message: Message) => {
+    // Regular messages might still come through fallback or other events
+    // Check if it's already in streaming messages (shouldn't happen if protocol is clean)
+    // If we receive a full message that was streaming, remove from streaming
+    setStreamingMessages(prev => {
+      const map = new Map(prev);
+      if (map.has(message.id)) {
+        map.delete(message.id);
+      }
+      return map;
+    });
     addMessage(message);
     setIsTyping(false);
+  }, [addMessage]);
+
+  const handleStreamStart = useCallback((messageId: string) => {
+    setIsTyping(false); // Stop generic typing indicator
+    const newMessage: Message = {
+      id: messageId,
+      sender: 'ai',
+      content: '',
+      timestamp: new Date(),
+      isStreaming: true
+    };
+    setStreamingMessages(prev => new Map(prev).set(messageId, newMessage));
+  }, []);
+
+  const handleStreamToken = useCallback((messageId: string, token: string) => {
+    setStreamingMessages(prev => {
+      const map = new Map(prev);
+      const msg = map.get(messageId);
+      if (msg) {
+        map.set(messageId, { ...msg, content: msg.content + token });
+      }
+      return map;
+    });
+  }, []);
+
+  const handleStreamEnd = useCallback((messageId: string, fullContent: string) => {
+    setStreamingMessages(prev => {
+      const map = new Map(prev);
+      const msg = map.get(messageId);
+      if (msg) {
+        // Add finalized message to store
+        // Ensure we use the full content provided in stream_end to guarantee integrity
+        // although msg.content should be same.
+        addMessage({
+          ...msg,
+          content: fullContent || msg.content,
+          isStreaming: false
+        });
+        map.delete(messageId);
+      }
+      return map;
+    });
   }, [addMessage]);
 
   const handleConnect = useCallback(() => {
@@ -38,6 +91,9 @@ export function ChatPanel() {
   const { isConnected, connectionError, sendMessage: sendWebSocketMessage } = useWebSocket({
     url: WEBSOCKET_URL,
     onMessage: handleWebSocketMessage,
+    onStreamStart: handleStreamStart,
+    onStreamToken: handleStreamToken,
+    onStreamEnd: handleStreamEnd,
     onConnect: handleConnect,
     onDisconnect: handleDisconnect,
     onError: handleError,
@@ -56,6 +112,15 @@ export function ChatPanel() {
     setIsTyping(true);
     sendWebSocketMessage(content);
   };
+
+  // Combine store messages with currently streaming messages
+  // Filter out any streaming messages that have already been added to the store to prevent duplicate keys
+  const displayMessages = [
+    ...messages,
+    ...Array.from(streamingMessages.values()).filter(
+      streamMsg => !messages.some(msg => msg.id === streamMsg.id)
+    )
+  ];
 
   return (
     <div className="flex flex-col h-full w-full bg-[#111827] text-white overflow-hidden shadow-2xl border border-gray-800 rounded-xl">
@@ -94,17 +159,17 @@ export function ChatPanel() {
 
       {/* Message List Area */}
       <div className="flex-1 min-h-0 relative bg-gradient-to-b from-gray-900 to-[#111827]">
-        <MessageList messages={messages} />
+        <MessageList messages={displayMessages} />
 
         {/* Typing Indicator Overlay */}
-        <div className={`absolute bottom-4 left-6 transition-all duration-300 transform ${isTyping ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-           <TypingIndicator isTyping={isTyping} />
+        <div className={`absolute bottom-4 left-6 transition-all duration-300 transform ${isTyping && streamingMessages.size === 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+           <TypingIndicator isTyping={isTyping && streamingMessages.size === 0} />
         </div>
       </div>
 
       {/* Input Area */}
       <div className="flex-none z-20 bg-[#111827]">
-        <MessageInput onSendMessage={handleSendMessage} disabled={!isConnected || isTyping} />
+        <MessageInput onSendMessage={handleSendMessage} disabled={!isConnected || isTyping || streamingMessages.size > 0} />
       </div>
     </div>
   );

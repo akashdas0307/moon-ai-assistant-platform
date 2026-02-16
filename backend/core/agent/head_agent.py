@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, AsyncGenerator
 import traceback
 
 from backend.core.llm.service import LLMService, llm_service as global_llm_service
@@ -142,50 +142,60 @@ class HeadAgent:
 
         return history
 
-    async def process_message(self, user_message: str) -> str:
+    async def process_message(self, user_message: str) -> AsyncGenerator[str, None]:
         """
         Process a user message through the agent think loop.
 
-        1. Build system prompt
-        2. Build conversation history
-        3. Call LLM
-        4. Save messages to DB
-        5. Return response
+        1. Save user message
+        2. Build context (system prompt + history)
+        3. Stream from LLM
+        4. Save full response to DB
 
         Args:
             user_message: The user's input message.
 
-        Returns:
-            The agent's response text.
+        Yields:
+            Tokens from the LLM response.
         """
-        # 1. Build context
+        # 1. Save user message immediately
+        try:
+            save_message(MessageCreate(sender="user", content=user_message))
+        except Exception as e:
+            logger.error(f"Failed to save user message: {e}")
+
+        # 2. Build context
         system_prompt = self.build_system_prompt()
         conversation_history = self._build_conversation_history(user_message)
 
         full_messages = [{"role": "system", "content": system_prompt}] + conversation_history
 
-        response_text = ""
+        accumulated_response = ""
 
-        # 2. Call LLM (or fallback)
+        # 3. Call LLM (or fallback)
         if not self.llm_service:
-            response_text = f"I'm not fully configured yet. Please set up your LLM_API_KEY in the .env file to enable AI responses. For now, I received your message: '{user_message[:100]}...'"
+            fallback_msg = f"I'm not fully configured yet. Please set up your LLM_API_KEY in the .env file to enable AI responses. For now, I received your message: '{user_message[:100]}...'"
+            accumulated_response = fallback_msg
+            yield fallback_msg
         else:
             try:
-                logger.info(f"Sending message to LLM (History: {len(conversation_history)} msgs)")
-                response_text = await self.llm_service.send_message(messages=full_messages, stream=False)
+                logger.info(f"Streaming message from LLM (History: {len(conversation_history)} msgs)")
+                async for token in await self.llm_service.send_message(messages=full_messages, stream=True):
+                    if token:
+                        accumulated_response += token
+                        yield token
             except Exception as e:
                 logger.error(f"Error calling LLM: {e}")
                 logger.debug(traceback.format_exc())
-                response_text = "I encountered an issue processing your message. Please try again."
+                error_msg = "\n\n[I encountered an issue processing your message. Please try again.]"
+                accumulated_response += error_msg
+                yield error_msg
 
-        # 3. Save messages to DB
-        try:
-            save_message(MessageCreate(sender="user", content=user_message))
-            save_message(MessageCreate(sender="assistant", content=response_text))
-        except Exception as e:
-            logger.error(f"Failed to save messages to DB: {e}")
-
-        return response_text
+        # 4. Save assistant response to DB
+        if accumulated_response:
+            try:
+                save_message(MessageCreate(sender="assistant", content=accumulated_response))
+            except Exception as e:
+                logger.error(f"Failed to save assistant message: {e}")
 
 
 # Create global instance (lazy — will use global llm_service)

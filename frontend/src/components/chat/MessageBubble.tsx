@@ -138,7 +138,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   hr: () => <hr className="my-4 border-gray-700" />,
                 }}
               >
-                {message.content}
+                {message.content + (message.isStreaming ? ' ▍' : '')}
               </ReactMarkdown>
             </div>
           )}

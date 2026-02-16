@@ -4,6 +4,9 @@ import { Message } from '../types/chat';
 export interface WebSocketConfig {
   url: string;
   onMessage?: (message: Message) => void;
+  onStreamStart?: (messageId: string) => void;
+  onStreamToken?: (messageId: string, token: string) => void;
+  onStreamEnd?: (messageId: string, fullContent: string) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
@@ -22,6 +25,9 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
   const {
     url,
     onMessage,
+    onStreamStart,
+    onStreamToken,
+    onStreamEnd,
     onConnect,
     onDisconnect,
     onError,
@@ -49,12 +55,18 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
+          // console.log('WebSocket message received:', data); // Too noisy for streaming tokens
 
           // Handle different message types
           if (data.type === 'connection') {
             // Connection confirmation message
             console.log('Connection confirmed:', data.message);
+          } else if (data.type === 'stream_start') {
+            onStreamStart?.(data.message_id);
+          } else if (data.type === 'stream_token') {
+            onStreamToken?.(data.message_id, data.token);
+          } else if (data.type === 'stream_end') {
+            onStreamEnd?.(data.message_id, data.content);
           } else if (data.type === 'echo' || data.type === 'message') {
             // Convert to Message format and pass to callback
             // Map 'assistant' sender from backend to 'ai' for frontend
@@ -101,7 +113,7 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
       console.error('Failed to create WebSocket:', error);
       setConnectionError('Failed to connect to server');
     }
-  }, [url, onMessage, onConnect, onDisconnect, onError, autoReconnect, reconnectInterval]);
+  }, [url, onMessage, onStreamStart, onStreamToken, onStreamEnd, onConnect, onDisconnect, onError, autoReconnect, reconnectInterval]);
 
   const sendMessage = useCallback((content: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {

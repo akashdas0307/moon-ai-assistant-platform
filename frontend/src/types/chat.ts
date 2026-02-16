@@ -3,6 +3,7 @@ export interface Message {
   sender: 'user' | 'ai';
   content: string;
   timestamp: Date;
+  isStreaming?: boolean;
 }
 
 export interface MessageInputProps {
