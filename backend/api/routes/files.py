@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.responses import FileResponse
 from typing import List, Literal, Optional
 from pydantic import BaseModel
 from backend.services.file_service import FileService
-from backend.models.file_models import FileNode, FileContent, DeleteResult
+from backend.models.file_models import FileNode, DeleteResult
 
 router = APIRouter()
 
@@ -49,13 +50,18 @@ async def create_item(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/content", response_model=FileContent)
+@router.get("/content")
 async def get_file_content(
     path: str = Query(..., description="Path to the file"),
     service: FileService = Depends(get_file_service)
 ):
     """Read file contents"""
     try:
+        # Check if it is an image
+        full_path = service.get_absolute_path(path)
+        if full_path.suffix.lower() in ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp']:
+            return FileResponse(full_path)
+
         return service.read_file(path)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

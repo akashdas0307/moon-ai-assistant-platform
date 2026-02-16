@@ -17,6 +17,7 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.323.0",

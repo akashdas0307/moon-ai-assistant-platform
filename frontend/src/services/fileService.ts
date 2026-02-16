@@ -10,8 +10,10 @@ export interface FileItem {
 }
 
 export interface FileContent {
+  path: string;
   content: string;
   encoding: string;
+  size: number;
 }
 
 export const fileService = {
