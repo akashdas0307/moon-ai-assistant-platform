@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import FileResponse
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional
 from pydantic import BaseModel
 from backend.services.file_service import FileService
-from backend.models.file_models import FileNode, FileContent, DeleteResult
+from backend.models.file_models import FileNode, DeleteResult
 
 router = APIRouter()
 
