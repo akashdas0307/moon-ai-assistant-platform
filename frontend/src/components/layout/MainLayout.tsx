@@ -27,11 +27,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
   const showBoth = chatVisible && workspaceVisible;
 
+  // Note: react-resizable-panels v4+ uses 'orientation' instead of 'direction'
+  // and 'order' prop on Panel is not required/supported (order is determined by DOM structure)
   return (
     <div className="flex-1 overflow-hidden h-full relative bg-[#1a1a1a]">
-      <PanelGroup direction={direction} className="h-full w-full">
+      <PanelGroup orientation={direction} className="h-full w-full">
         {chatVisible && (
-          <Panel defaultSize={40} minSize={30} order={1} id="chat-panel">
+          <Panel defaultSize={40} minSize={30} id="chat-panel">
             <div className="h-full w-full overflow-hidden">
                {chatPanel}
             </div>
@@ -50,7 +52,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         )}
 
         {workspaceVisible && (
-          <Panel defaultSize={60} minSize={30} order={2} id="workspace-panel">
+          <Panel defaultSize={60} minSize={30} id="workspace-panel">
             <div className="h-full w-full overflow-hidden">
                {workspacePanel}
             </div>
