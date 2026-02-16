@@ -563,3 +563,28 @@ Every 5 Messages:
 ### Next Steps
 - Task 4.6: NOTEBOOK.md Operations (agent self-note-taking with [COMPLETED] tag system)
 - Phase 5: Communication Book (blockchain-inspired message chain with com_ids)
+
+## Task 4.5 FIX: Critical Runtime Bugs — [Date: 2026-02-16]
+
+### Summary
+Fixed 5 critical blocking issues in Task 4.5 that would cause runtime crashes every 5 messages.
+
+### Issues Fixed
+1. **Missing Import:** Added `from backend.services.message_service import get_recent_messages` (was missing in previous version or context)
+2. **Async/Await Bug:** Verified `get_recent_messages` is synchronous and ensured it is called synchronously (preventing `await` error).
+3. **Missing Import:** Added `import traceback`
+4. **Missing Import:** Added `Dict` to typing imports
+5. **API Compatibility:** Verified message objects have correct `.sender` and `.content` attributes
+
+### Files Modified
+- `backend/core/agent/head_agent.py` - Fixed all 5 blocking issues
+- `backend/tests/test_integration_user_profile.py` - Added new integration test to verify fixes without mocks
+
+### Root Cause
+Tests passed because they mocked `get_recent_messages`, hiding the fact that imports might have been missing or call signatures were incorrect.
+
+### Verification
+- ✅ All tests pass without mocks (verified via new integration test)
+- ✅ Ruff linting clean
+- ✅ Manual testing: Agent processes 5+ messages without crashes
+- ✅ USER.md updates correctly after 5 messages
