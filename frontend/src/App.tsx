@@ -3,6 +3,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import { Header } from './components/layout/Header';
 import { ChatPanel } from './components/chat/ChatPanel';
 import { WorkspacePanel } from './components/workspace/WorkspacePanel';
+import { Toast } from './components/common/Toast';
 
 function App() {
   const [chatVisible, setChatVisible] = useState(true);
@@ -63,7 +64,8 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#1a1a1a] overflow-hidden text-white">
+    <div className="flex flex-col h-screen bg-[#1a1a1a] overflow-hidden text-white relative">
+      <Toast />
       <Header
         onToggleChatPanel={handleToggleChat}
         onToggleWorkspacePanel={handleToggleWorkspace}

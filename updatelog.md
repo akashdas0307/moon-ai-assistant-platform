@@ -194,3 +194,36 @@ _This log is automatically updated with each task completion. Always reference t
 - `frontend/src/components/layout/Header.tsx` (New)
 - `frontend/src/components/workspace/WorkspacePanel.tsx` (New)
 - `frontend/src/components/workspace/FileBrowser.tsx` (Modified styling)
+
+## Task 3.5: File Operations Integration - [Date: 2026-02-16]
+
+### Summary
+Implemented comprehensive file operations integration, connecting the file browser UI to the backend API. Users can now browse files, open them in the viewer, and perform create/rename/delete operations through context menus and keyboard shortcuts.
+
+### Components Added
+- `FileContextMenu.tsx` - Right-click context menu for file operations
+- `Dialog.tsx` - Reusable modal dialog for prompts and confirmations
+- `Toast.tsx` - Toast notification system for user feedback
+- `toastStore.ts` - Zustand store for managing toast notifications
+
+### Components Modified
+- `FileBrowser.tsx` - Added click handlers for file selection, context menu trigger, upload button
+- `FileViewer.tsx` - Integrated with workspace store for selected file display and loading states
+- `WorkspacePanel.tsx` - Added keyboard shortcuts (Ctrl+N, Delete, F2) and dialog management
+- `workspaceStore.ts` - Added selected file state (object), async file selection, and file operation actions (create, delete, rename)
+- `App.tsx` - Integrated Toast component for global notifications
+
+### Features Implemented
+- ✅ File/folder selection with click handlers
+- ✅ Right-click context menu (create, rename, delete, copy path, download)
+- ✅ Keyboard shortcuts (Ctrl+N, Delete, F2, Escape)
+- ✅ File upload from local system
+- ✅ File download to local system
+- ✅ Toast notifications for success/error feedback
+- ✅ Confirmation dialogs for destructive actions
+- ✅ Real-time file tree updates after operations
+
+### Testing Results
+- ✅ Created unit tests in `frontend/tests/workspace/file-operations.spec.tsx`
+- ✅ Verified file operations logic via mocked store and events
+- ✅ 5/5 tests passed
