@@ -1,8 +1,7 @@
 import pytest
 import re
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 from backend.core.agent.head_agent import HeadAgent
-from datetime import datetime
 
 # Mock definitions
 MOCK_AGENT_MD = "Mock Agent"
@@ -121,12 +120,9 @@ async def test_special_output_parsing_note(head_agent, mock_llm_service):
         async for token in head_agent.process_message("User input"):
             response_tokens.append(token)
 
-        full_response = "".join(response_tokens)
-        print(f"DEBUG: Full response: {full_response}")
 
         # Verify NOTEBOOK.md has the note
         notebook_content = (head_agent.agent_files_dir / "NOTEBOOK.md").read_text()
-        print(f"DEBUG: Notebook content: {notebook_content}")
         assert "Remember to buy milk" in notebook_content
 
         # Verify saved message does NOT have the note (cleaned)
@@ -150,7 +146,7 @@ async def test_special_output_parsing_complete(head_agent, mock_llm_service):
 
     mock_llm_service.send_message.return_value = mock_gen()
 
-    with patch("backend.core.agent.head_agent.save_message") as mock_save, \
+    with patch("backend.core.agent.head_agent.save_message"), \
          patch("backend.core.agent.head_agent.get_recent_messages", return_value=[]):
         # Run process_message
         response_tokens = []
