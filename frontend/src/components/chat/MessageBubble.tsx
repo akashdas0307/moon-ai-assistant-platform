@@ -53,9 +53,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             </button>
           </div>
           <SyntaxHighlighter
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             style={vscDarkPlus as any}
             language={match[1]}
             PreTag="div"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             customStyle={{ margin: 0, padding: '1rem', background: '#1F2937' } as any}
             {...props}
           >

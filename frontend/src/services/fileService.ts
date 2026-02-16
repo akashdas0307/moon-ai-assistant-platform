@@ -24,7 +24,13 @@ export const fileService = {
 
   // GET /api/v1/files/content?path={path}
   async readFile(path: string): Promise<FileContent> {
-    return apiClient.request<FileContent>(`/api/v1/files/content?path=${encodeURIComponent(path)}`);
+    try {
+      const response = await apiClient.request<FileContent>(`/api/v1/files/content?path=${encodeURIComponent(path)}`);
+      return response;
+    } catch (error) {
+      console.error('Failed to read file:', error);
+      throw new Error(`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   },
 
   // POST /api/v1/files
