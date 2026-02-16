@@ -509,3 +509,57 @@ User Message → WebSocket → HeadAgent.process_message() → LLM → Response 
     3. Updated test assertions to expect `type="message"` and `sender="assistant"`.
     4. Added `@pytest.mark.timeout(30)` to WebSocket tests.
 - **Verification:** All 44 tests passed in < 4 seconds.
+
+## Task 4.5: USER.md Auto-Update — [Date: 2026-02-16]
+
+### Summary
+Implemented an intelligent background system that automatically learns about the user through conversations and updates USER.md with discovered preferences, patterns, and communication style. The agent becomes progressively more personalized without requiring explicit user configuration.
+
+### Files Modified
+- `backend/core/agent/head_agent.py` — Added conversation counter, `_update_user_profile()` method, profile analysis logic
+- `backend/core/llm/service.py` — Updated `send_message` to support model override
+
+### Files Created
+- `backend/tests/test_user_profile_update.py` — Comprehensive test suite for profile update logic
+
+### Key Features
+1. **Automatic Trigger:** Profile update triggers every 5 user messages
+2. **Conversation Analysis:** LLM analyzes last 15-20 messages to extract user insights
+3. **Smart Merging:** New profile data merges with existing USER.md content without information loss
+4. **Structured Profile:** Extracts name, communication style, interests, preferences, context, technical level, and patterns
+5. **Cost Optimization:** Uses cheap LLM model for analysis (gpt-3.5-turbo)
+6. **Error Resilience:** Handles LLM failures, file I/O errors gracefully with fallbacks
+7. **Transparent Operation:** Updates happen in background without disrupting user experience
+
+### Profile Sections Tracked
+- **Name:** User's name if mentioned in conversations
+- **Communication Style:** Formal/casual, brief/detailed preferences
+- **Interests & Topics:** Recurring topics and domains of interest
+- **Preferences:** Explicit preferences mentioned by user
+- **Context:** Work, projects, location, or life context
+- **Technical Level:** Expertise assessment (Beginner/Intermediate/Advanced)
+- **Patterns:** Recurring patterns in requests or communication
+
+### Architecture
+```
+Every 5 Messages:
+  HeadAgent.process_message() → Counter reaches 5 → _update_user_profile()
+    ├── Fetch last 15-20 messages from DB
+    ├── Build profile analysis prompt
+    ├── Send to cheap LLM (gpt-3.5-turbo)
+    ├── Parse LLM response into sections
+    ├── Read current USER.md
+    ├── Merge new insights with existing content
+    └── Write updated USER.md to disk
+```
+
+### Testing Results
+- ✅ 5 tests passing in test_user_profile_update.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+- ✅ Profile merging logic verified with edge cases
+- ✅ Manual testing: USER.md updates correctly after conversations
+
+### Next Steps
+- Task 4.6: NOTEBOOK.md Operations (agent self-note-taking with [COMPLETED] tag system)
+- Phase 5: Communication Book (blockchain-inspired message chain with com_ids)

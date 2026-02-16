@@ -36,7 +36,8 @@ class LLMService:
         messages: list[dict],
         stream: bool = False,
         temperature: float = 0.7,
-        max_tokens: int = 2000
+        max_tokens: int = 2000,
+        model: str | None = None
     ) -> str | AsyncGenerator[str, None]:
         """
         Send messages to LLM and get response.
@@ -46,6 +47,7 @@ class LLMService:
             stream: Whether to stream response token-by-token
             temperature: Sampling temperature (0.0-2.0)
             max_tokens: Maximum tokens in response
+            model: Optional model override
 
         Returns:
             Complete response string if stream=False,
@@ -53,10 +55,10 @@ class LLMService:
         """
         try:
             if stream:
-                return self._stream_response(messages, temperature, max_tokens)
+                return self._stream_response(messages, temperature, max_tokens, model)
             else:
                 response = await self.client.chat.completions.create(
-                    model=self.model,
+                    model=model or self.model,
                     messages=messages,
                     temperature=temperature,
                     max_tokens=max_tokens
@@ -71,12 +73,13 @@ class LLMService:
         self,
         messages: list[dict],
         temperature: float,
-        max_tokens: int
+        max_tokens: int,
+        model: str | None = None
     ) -> AsyncGenerator[str, None]:
         """Helper for streaming token-by-token responses."""
         try:
             stream = await self.client.chat.completions.create(
-                model=self.model,
+                model=model or self.model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
