@@ -6,6 +6,7 @@ from datetime import datetime
 from backend.api.websocket.handlers import handle_websocket
 from backend.database.db import init_db
 from backend.api.routes.messages import router as messages_router
+from backend.api.routes.files import router as files_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +21,11 @@ app = FastAPI(
 
 # Include Routers
 app.include_router(messages_router, prefix="/api/v1")
+app.include_router(
+    files_router,
+    prefix="/api/v1/files",
+    tags=["files"]
+)
 
 # Configure CORS
 app.add_middleware(
