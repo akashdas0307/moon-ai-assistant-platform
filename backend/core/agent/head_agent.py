@@ -14,6 +14,41 @@ logger = logging.getLogger(__name__)
 # Path to agent core files
 AGENT_FILES_DIR = Path(__file__).resolve().parent.parent.parent / "agents" / "head-agent"
 
+PROFILE_ANALYSIS_PROMPT = """
+You are analyzing conversation history to build a user profile. Extract key information about the user.
+
+CONVERSATION HISTORY:
+{conversation_history}
+
+Based on these conversations, provide a structured profile with:
+
+## Name
+[User's name if mentioned, otherwise "Unknown"]
+
+## Communication Style
+[How they prefer to communicate: formal/casual, brief/detailed, etc.]
+
+## Interests & Topics
+[Topics they frequently discuss or show interest in]
+
+## Preferences
+[Any explicit preferences they've mentioned]
+
+## Context
+[Work, projects, location, or life context if relevant]
+
+## Technical Level
+[Beginner, Intermediate, Advanced - based on their questions and understanding]
+
+## Patterns
+[Any recurring patterns in their requests or communication]
+
+IMPORTANT:
+- Only include information that's clearly evident from the conversations
+- Use "Unknown" or "Not specified" for unclear items
+- Be concise — aim for 2-3 sentences per section
+- Focus on actionable insights that help personalize future responses
+"""
 
 class HeadAgent:
     """
@@ -31,6 +66,10 @@ class HeadAgent:
         """
         self.llm_service = llm_service if llm_service else global_llm_service
         self.agent_files_dir = AGENT_FILES_DIR
+
+        # User profile update settings
+        self.user_profile_update_interval = 5
+        self._message_count_since_last_update = 0
 
         if self.llm_service:
             logger.info("HeadAgent initialized with LLM service.")
@@ -57,6 +96,20 @@ class HeadAgent:
         except Exception as e:
             logger.error(f"Error reading agent file {filename}: {e}")
             return ""
+
+    def _write_file(self, filename: str, content: str) -> None:
+        """
+        Write content to a file in the agent files directory.
+
+        Args:
+            filename: Name of the file to write (e.g., "USER.md")
+            content: Content to write
+        """
+        file_path = self.agent_files_dir / filename
+        try:
+            file_path.write_text(content, encoding="utf-8")
+        except Exception as e:
+            logger.error(f"Error writing agent file {filename}: {e}")
 
     def _get_notebook_tail(self, num_lines: int = 15) -> str:
         """
@@ -142,6 +195,132 @@ class HeadAgent:
 
         return history
 
+    def _parse_profile_sections(self, content: str) -> Dict[str, str]:
+        """
+        Parse markdown sections from USER.md.
+
+        Returns:
+            Dictionary mapping section names to their content
+        """
+        sections = {}
+        current_section = None
+        current_content = []
+
+        for line in content.split("\n"):
+            if line.startswith("## "):
+                # Save previous section
+                if current_section:
+                    sections[current_section] = "\n".join(current_content).strip()
+                # Start new section
+                current_section = line[3:].strip()
+                current_content = []
+            elif current_section:
+                current_content.append(line)
+
+        # Save last section
+        if current_section:
+            sections[current_section] = "\n".join(current_content).strip()
+
+        return sections
+
+    def _merge_profile_sections(self, existing: str, new: str, section_name: str) -> str:
+        """
+        Merge two profile sections intelligently.
+
+        Args:
+            existing: Current content from USER.md
+            new: New content from LLM analysis
+            section_name: Name of the section being merged
+
+        Returns:
+            Merged content
+        """
+        existing = existing.strip()
+        new = new.strip()
+
+        # If existing is empty or "Unknown", use new
+        if not existing or existing.lower() in ["unknown", "not specified", "none"]:
+            return new
+
+        # If new is empty or "Unknown", keep existing
+        if not new or new.lower() in ["unknown", "not specified", "none"]:
+            return existing
+
+        # Don't duplicate if content is very similar (simple check)
+        if new in existing:
+            return existing
+
+        # Both have content — combine them
+        return f"{existing}\n\nAdditionally: {new}"
+
+    async def _update_user_profile(self) -> None:
+        """
+        Analyze recent conversation and update USER.md.
+        """
+        if not self.llm_service:
+            return
+
+        logger.info("Updating user profile based on recent messages...")
+
+        try:
+            # 1. Fetch recent messages
+            recent_messages = get_recent_messages(limit=20)
+            if not recent_messages:
+                return
+
+            conversation_text = ""
+            for msg in recent_messages:
+                conversation_text += f"{msg.sender.upper()}: {msg.content}\n"
+
+            # 2. Build analysis prompt
+            prompt = PROFILE_ANALYSIS_PROMPT.format(conversation_history=conversation_text)
+            messages = [{"role": "user", "content": prompt}]
+
+            # 3. Send to LLM (using cheap model)
+            # Using gpt-3.5-turbo as a reliable cheap model default, or user's preference
+            analysis = await self.llm_service.send_message(
+                messages=messages,
+                stream=False,
+                model="gpt-3.5-turbo" # Explicitly use cheap model
+            )
+
+            # 4. Parse & Merge
+            current_profile = self._read_file("USER.md")
+            current_sections = self._parse_profile_sections(current_profile)
+            new_sections = self._parse_profile_sections(analysis)
+
+            # Get all unique section keys
+            all_keys = set(current_sections.keys()) | set(new_sections.keys())
+
+            # Use specific order if possible
+            ordered_keys = [
+                "Name", "Communication Style", "Interests & Topics",
+                "Preferences", "Context", "Technical Level", "Patterns"
+            ]
+
+            # Add any custom sections found
+            for key in all_keys:
+                if key not in ordered_keys:
+                    ordered_keys.append(key)
+
+            final_content = "# User Profile\n\n"
+
+            for key in ordered_keys:
+                if key in all_keys:
+                    existing_val = current_sections.get(key, "")
+                    new_val = new_sections.get(key, "")
+                    merged_val = self._merge_profile_sections(existing_val, new_val, key)
+                    final_content += f"## {key}\n{merged_val}\n\n"
+
+            # 5. Write back to USER.md
+            self._write_file("USER.md", final_content)
+            logger.info("User profile updated successfully.")
+
+        except Exception as e:
+            logger.error(f"Failed to update user profile: {e}")
+            logger.debug(traceback.format_exc())
+
+
     async def process_message(self, user_message: str) -> AsyncGenerator[str, None]:
         """
         Process a user message through the agent think loop.
@@ -196,6 +375,17 @@ class HeadAgent:
                 save_message(MessageCreate(sender="assistant", content=accumulated_response))
             except Exception as e:
                 logger.error(f"Failed to save assistant message: {e}")
+
+        # 5. User Profile Update Logic
+        self._message_count_since_last_update += 1
+        if self._message_count_since_last_update >= self.user_profile_update_interval:
+            # We don't want to block the response, but since this is an async generator,
+            # we are already "done" yielding.
+            # However, running this here means the generator won't finish until the update is done.
+            # This is acceptable for a background process in this architecture.
+            # In a more complex system, we might offload this to a task queue.
+            await self._update_user_profile()
+            self._message_count_since_last_update = 0
 
 
 # Create global instance (lazy — will use global llm_service)
