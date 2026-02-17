@@ -669,3 +669,8 @@ to its predecessor and successor in the conversation chain.
 
 ### Next Steps
 - Task 5.2: Communication Service (save_message with com_id generation and chain linking)
+
+### CI/Review Fix
+- **Issue:** Code review flagged missing `backend/core/communication/__init__.py` as blocking.
+- **Fix:** Created the empty `__init__.py` to register the `communication` directory as a Python package, ready for Task 5.2 service implementation.
+- **Result:** All tests still passing, ruff clean.
