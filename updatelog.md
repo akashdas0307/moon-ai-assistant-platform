@@ -635,3 +635,42 @@ Agent Response → Output Parser → [NOTE:...] detected → _append_notebook_en
 - **Fixed**: CI failure in `backend/tests/test_user_profile_update.py` by adding `model="gpt-3.5-turbo"` to LLM call in `HeadAgent`.
 - **Commands**: `install`, `run`, `reload`, `stop`
 - **Notes**: Scripts allow single-command management of backend and frontend services.
+
+## Task 5.1: Communication DB Schema — [2026-02-17]
+
+### Summary
+Implemented the database foundation for the Communication Book — a blockchain-inspired
+doubly-linked message chain system where every message gets a UUID com_id and links
+to its predecessor and successor in the conversation chain.
+
+### Files Created
+- `backend/models/communication.py` — Pydantic models: CommunicationCreate, Communication, InitiatorLog
+- `backend/core/communication/__init__.py` — Empty init for communication package
+- `backend/tests/test_communication_schema.py` — Schema validation tests using in-memory SQLite
+
+### Files Modified
+- `backend/database/db.py` — Added `communications` and `initiator_log` tables to `init_db()`
+
+### Schema Design
+- `communications`: com_id (UUID PK), sender, recipient, timestamp, raw_content,
+  initiator_com_id (FK→prev), exitor_com_id (FK→next), is_condensed, condensed_summary
+- `initiator_log`: Records the first com_id of each conversation thread
+
+### Key Design Decisions
+- Doubly-linked chain: initiator_com_id points backward, exitor_com_id points forward
+- NULL initiator_com_id = conversation start (also logged to initiator_log)
+- is_condensed + condensed_summary supports Phase 6 Smart Condensation
+- Existing `messages` table untouched — additive changes only
+
+### Testing Results
+- ✅ 8 new tests passing in test_communication_schema.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+
+### Next Steps
+- Task 5.2: Communication Service (save_message with com_id generation and chain linking)
+
+### CI/Review Fix
+- **Issue:** Code review flagged missing `backend/core/communication/__init__.py` as blocking.
+- **Fix:** Created the empty `__init__.py` to register the `communication` directory as a Python package, ready for Task 5.2 service implementation.
+- **Result:** All tests still passing, ruff clean.
