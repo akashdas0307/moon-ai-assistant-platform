@@ -104,7 +104,7 @@ Testing
 
         # Verify LLM call used cheap model
         call_args = head_agent.llm_service.send_message.call_args
-        assert call_args.kwargs.get("model") == "gpt-3.5-turbo"
+        assert call_args.kwargs.get("model") == "openrouter/free"
 
 @pytest.mark.asyncio
 async def test_update_handles_llm_failure(head_agent):

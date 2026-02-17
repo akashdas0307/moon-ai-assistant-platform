@@ -417,11 +417,11 @@ You can write notes to your NOTEBOOK.md for future reference using special synta
             messages = [{"role": "user", "content": prompt}]
 
             # 3. Send to LLM (using cheap model)
-            # Using gpt-3.5-turbo as a reliable cheap model default, or user's preference
+            # Using openrouter/free as the default cheap model
             analysis = await self.llm_service.send_message(
                 messages=messages,
                 stream=False,
-                model="free"
+                model="openrouter/free"
             )
 
             # 4. Parse & Merge
