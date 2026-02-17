@@ -32,3 +32,4 @@ backend/*.log
 backend/agents/head-agent/spark_logs/*.log
 backend/agents/head-agent/spark_logs/*.txt
 !backend/agents/head-agent/spark_logs/.gitkeep
+.moon_pids
