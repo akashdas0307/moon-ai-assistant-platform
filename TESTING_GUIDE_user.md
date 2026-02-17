@@ -257,6 +257,14 @@ All tests should pass with:
 - **Professional feel** - Matches quality of Claude Desktop
 - **No errors** - Console clean, build succeeds
 - **Responsive** - Works on mobile and desktop
+---
+`moon.bat install`  ← one time only (or after pulling new deps)
+
+`moon.bat run` ← starts both services (auto-installs if needed)
+
+`moon.bat reload` ← restart everything
+
+`moon.bat stop`  ← kill both services
 
 ---
 

@@ -6,102 +6,155 @@ setlocal enabledelayedexpansion
 ::   Usage: moon.bat [install|run|reload|stop]
 :: ═══════════════════════════════════════════
 
-set SCRIPT_DIR=%~dp0
-set VENV_ACTIVATE=%SCRIPT_DIR%backend\venv\Scripts\activate.bat
+set "SCRIPT_DIR=%~dp0"
+set "VENV_DIR=%SCRIPT_DIR%backend\venv"
+set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
+set "VENV_UVICORN=%VENV_DIR%\Scripts\uvicorn.exe"
 
-if \"%1\"==\"install\"  goto :install
-if \"%1\"==\"run\"      goto :run
-if \"%1\"==\"reload\"   goto :reload
-if \"%1\"==\"stop\"     goto :stop
+if "%1"=="install" goto :install
+if "%1"=="run"     goto :run
+if "%1"=="reload"  goto :reload
+if "%1"=="stop"    goto :stop
 goto :usage
 
-:: ─── INSTALL ────────────────────────────────
+:: ── INSTALL ─────────────────────────────────────────────────
 :install
 echo.
-echo  [Moon-AI] Installing dependencies...
-echo  --------------------------------------
-echo.
-echo  [1/2] Installing Python dependencies...
-if not exist \"%VENV_ACTIVATE%\" (
-  echo  WARNING: venv not found at backend\venv
-  echo  Run: cd backend ^&^& python -m venv venv
+echo   [Moon-AI] Setting up dependencies...
+echo   ----------------------------------------
+
+:: 1. Verify Python is available
+python --version >nul 2>&1
+if errorlevel 1 (
+  echo   ERROR: Python is not installed or not in PATH.
+  echo   Download from https://python.org
   exit /b 1
 )
-call \"%VENV_ACTIVATE%\"
-pip install -r \"%SCRIPT_DIR%backend\requirements.txt\"
+
+:: 2. Create venv automatically if missing
+if not exist "%VENV_PYTHON%" (
+  echo   Creating Python virtual environment...
+  python -m venv "%VENV_DIR%"
+  if errorlevel 1 (
+    echo   ERROR: Failed to create venv. Check your Python installation.
+    exit /b 1
+  )
+  echo   Virtual environment created.
+) else (
+  echo   Virtual environment found.
+)
+
+:: 3. Upgrade pip so it can handle new packages
+echo   Upgrading pip...
+"%VENV_PYTHON%" -m pip install --upgrade pip --quiet
+
+:: 4. Install Python dependencies via the venv python directly (no activation needed)
+echo   Installing Python packages...
+"%VENV_PYTHON%" -m pip install -r "%SCRIPT_DIR%backend\requirements.txt"
+if errorlevel 1 (
+  echo.
+  echo   ERROR: pip install failed. See errors above.
+  exit /b 1
+)
+
+:: 5. Confirm uvicorn was installed
+if not exist "%VENV_UVICORN%" (
+  echo.
+  echo   ERROR: uvicorn not found after install.
+  echo   Try: "%VENV_PYTHON%" -m pip install uvicorn
+  exit /b 1
+)
+echo   Python packages installed OK.
+
+:: 6. Install Node.js dependencies
 echo.
-echo  [2/2] Installing Node.js dependencies...
-cd \"%SCRIPT_DIR%frontend\" && npm install
+echo   Installing Node.js packages...
+cd /d "%SCRIPT_DIR%frontend"
+npm install
+if errorlevel 1 (
+  echo.
+  echo   ERROR: npm install failed. Is Node.js installed?
+  echo   Download from https://nodejs.org
+  exit /b 1
+)
+echo   Node.js packages installed OK.
+
 echo.
-echo  Done! Run: moon.bat run
+echo   ----------------------------------------
+echo   All dependencies installed successfully.
+echo   Run:  moon.bat run
+echo   ----------------------------------------
 echo.
 goto :end
 
-:: ─── RUN ────────────────────────────────────
+:: ── RUN ─────────────────────────────────────────────────────
 :run
+:: Auto-install if uvicorn is missing -- no manual step needed
+if not exist "%VENV_UVICORN%" (
+  echo.
+  echo   [Auto] Dependencies not found. Running install first...
+  echo.
+  call "%~f0" install
+  if errorlevel 1 (
+    echo   ERROR: Auto-install failed. Fix errors above then retry.
+    exit /b 1
+  )
+  echo.
+)
+
 echo.
-echo  [Moon-AI] Starting services...
-echo  --------------------------------------
-echo  Backend  -- http://localhost:8000
-echo  Frontend -- http://localhost:5173
-echo  Close the opened windows to stop.
-echo  --------------------------------------
+echo   [Moon-AI] Starting services...
+echo   ----------------------------------------
+echo   Backend  -^> http://localhost:8000
+echo   Frontend -^> http://localhost:5173
+echo   Close the windows below to stop.
+echo   ----------------------------------------
 echo.
-if exist \"%VENV_ACTIVATE%\" call \"%VENV_ACTIVATE%\"
-cd \"%SCRIPT_DIR%\"
-start \"Moon-AI Backend\" cmd /k \"call %VENV_ACTIVATE% && uvicorn backend.main:app --reload --port 8000\"
-cd \"%SCRIPT_DIR%frontend\"
-start \"Moon-AI Frontend\" cmd /k \"npm run dev\"
+
+:: Start backend using the venv python.exe directly -- no PATH / activation issues
+cd /d "%SCRIPT_DIR%"
+start "Moon-AI Backend" cmd /k ""%VENV_PYTHON%" -m uvicorn backend.main:app --reload --port 8000"
+
+:: Start frontend
+cd /d "%SCRIPT_DIR%frontend"
+start "Moon-AI Frontend" cmd /k "npm run dev"
 goto :end
 
-:: ─── STOP ────────────────────────────────────
+:: ── STOP ────────────────────────────────────────────────────
 :stop
 echo.
-echo  [Moon-AI] Stopping services...
-for /f \"tokens=5\" %%a in ('netstat -aon ^| findstr \":8000 \"') do (
+echo   [Moon-AI] Stopping services...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8000 " 2^>nul') do (
   taskkill /F /PID %%a >nul 2>&1
 )
-for /f \"tokens=5\" %%a in ('netstat -aon ^| findstr \":5173 \"') do (
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":5173 " 2^>nul') do (
   taskkill /F /PID %%a >nul 2>&1
 )
-echo  Backend and Frontend stopped.
+echo   Backend and Frontend stopped.
 echo.
 goto :end
 
-:: ─── RELOAD ──────────────────────────────────
+:: ── RELOAD ──────────────────────────────────────────────────
 :reload
 echo.
-echo  [Moon-AI] Reloading services...
-echo  Stopping running services...
-for /f \"tokens=5\" %%a in ('netstat -aon ^| findstr \":8000 \"') do (
-  taskkill /F /PID %%a >nul 2>&1
-)
-for /f \"tokens=5\" %%a in ('netstat -aon ^| findstr \":5173 \"') do (
-  taskkill /F /PID %%a >nul 2>&1
-)
-echo  Stopped. Restarting in 2 seconds...
-timeout /t 2 /nobreak > nul
-if exist \"%VENV_ACTIVATE%\" call \"%VENV_ACTIVATE%\"
-cd \"%SCRIPT_DIR%\"
-start \"Moon-AI Backend\" cmd /k \"call %VENV_ACTIVATE% && uvicorn backend.main:app --reload --port 8000\"
-cd \"%SCRIPT_DIR%frontend\"
-start \"Moon-AI Frontend\" cmd /k \"npm run dev\"
-echo  Services restarted!
-echo.
+echo   [Moon-AI] Reloading services...
+call "%~f0" stop
+timeout /t 2 /nobreak >nul
+call "%~f0" run
 goto :end
 
-:: ─── USAGE ───────────────────────────────────
+:: ── USAGE ───────────────────────────────────────────────────
 :usage
 echo.
-echo  Moon-AI Dev Launcher
+echo   Moon-AI Dev Launcher
 echo.
-echo  Usage: moon.bat [command]
+echo   Usage:  moon.bat [command]
 echo.
-echo  Commands:
-echo    install   Install all Python + Node.js dependencies
-echo    run       Start backend + frontend services
-echo    reload    Stop and restart all services
-echo    stop      Stop all running services
+echo   Commands:
+echo     install   Install all Python + Node.js dependencies
+echo     run       Start backend + frontend  (auto-installs if needed)
+echo     reload    Stop and restart all services
+echo     stop      Stop all running services
 echo.
 
 :end
