@@ -628,3 +628,10 @@ Agent Response → Output Parser → [NOTE:...] detected → _append_notebook_en
 ### Next Steps
 - Phase 5: Communication Book (blockchain-inspired message chain with com_ids)
 - Task 5.1: Communication DB Schema
+
+# Task 4.7 — One-Click Dev Launcher Scripts
+- **Created**: `moon.sh` (WSL/Linux/Mac), `moon.bat` (Windows)
+- **Updated**: `.gitignore` (added `.moon_pids`)
+- **Fixed**: CI failure in `backend/tests/test_user_profile_update.py` by adding `model="gpt-3.5-turbo"` to LLM call in `HeadAgent`.
+- **Commands**: `install`, `run`, `reload`, `stop`
+- **Notes**: Scripts allow single-command management of backend and frontend services.
