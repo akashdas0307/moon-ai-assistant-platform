@@ -421,7 +421,7 @@ You can write notes to your NOTEBOOK.md for future reference using special synta
             analysis = await self.llm_service.send_message(
                 messages=messages,
                 stream=False,
-                model="openrouter/free"
+                model="free"
             )
 
             # 4. Parse & Merge
