@@ -795,3 +795,37 @@ All 5 Communication Book tasks are done:
 ### Next Steps
 - Phase 5 Review Checkpoint: Claude verifies chain integrity and no orphaned messages
 - Phase 6: Smart Condensation (Token Counter → Condensation Engine)
+
+## Task 6.1: Token Counter — 2026-02-20
+
+### Summary
+Created the token counting foundation for Phase 6 Smart Condensation. The TokenCounter
+class measures token usage for system prompts and conversation history against configurable
+context window budgets, providing the trigger mechanism for condensation decisions.
+
+### Files Created
+- `backend/core/memory/__init__.py` — Memory package initialization
+- `backend/core/memory/token_counter.py` — TokenCounter class with budget tracking
+- `backend/tests/test_token_counter.py` — 16 tests covering all methods
+
+### Files Modified
+- `backend/requirements.txt` — Added tiktoken dependency
+
+### Budget Design (Default: 128k context window)
+- history_ceiling: 40% = 51,200 tokens — max for conversation history
+- system_ceiling: 30% = 38,400 tokens — soft limit for system prompt
+- response_reserve: 20% = 25,600 tokens — reserved for AI response generation
+
+### Key Design Decisions
+- cl100k_base fallback encoding for unknown model names (graceful degradation)
+- 4-token-per-message overhead follows OpenAI's token counting standard
+- needs_condensation() is the single trigger point Task 6.2 will call
+- Module-level singleton `token_counter` for easy import in future tasks
+
+### Testing Results
+- ✅ 16 tests passing in test_token_counter.py
+- ✅ All 110 tests still passing
+- ✅ Ruff linting clean
+
+### Next Steps
+- Task 6.2: Condensation Engine (build condensation.py that uses token_counter.needs_condensation())
