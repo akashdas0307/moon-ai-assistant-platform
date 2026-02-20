@@ -829,3 +829,36 @@ context window budgets, providing the trigger mechanism for condensation decisio
 
 ### Next Steps
 - Task 6.2: Condensation Engine (build condensation.py that uses token_counter.needs_condensation())
+
+## Task 6.2: Condensation Engine — 2026-02-20
+
+### Summary
+Built the CondensationEngine class that detects over-budget conversation history and
+compresses the middle portion using an LLM summarisation call, preserving first 3 and
+last 7 messages as anchors and recording com_id traceability per condensed line.
+
+### Files Created
+- `backend/core/memory/condensation.py` — CondensationEngine class
+- `backend/tests/test_condensation.py` — 10 tests
+
+### Files Modified
+- `backend/core/memory/__init__.py` — Exported CondensationEngine
+
+### Condensation Window Strategy
+- Keep: first 3 messages (conversation anchors)
+- Keep: last 7 messages (recent context)
+- Condense: everything in between → one system message with per-line com_id references
+- Skip condensation: if total messages ≤ 10
+
+### LLM Call Design
+- Model: openai/gpt-4o-mini (cheap, fast — not user-configurable)
+- Non-streaming call
+- Fallback on failure: single placeholder message
+
+### Testing Results
+- ✅ 10 new tests passing in test_condensation.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+
+### Next Steps
+- Task 6.3: Condensation-Communication Link (update communications table when message is condensed, set is_condensed=True, store condensed_summary)
