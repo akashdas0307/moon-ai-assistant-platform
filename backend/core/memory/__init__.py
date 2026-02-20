@@ -1,4 +1,4 @@
-# Memory management package — token counting, condensation, and context building.
 from backend.core.memory.condensation import CondensationEngine
+import backend.core.memory.condensation_link as CondensationLink
 
-__all__ = ["CondensationEngine"]
+__all__ = ["CondensationEngine", "CondensationLink"]

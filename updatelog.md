@@ -862,3 +862,29 @@ last 7 messages as anchors and recording com_id traceability per condensed line.
 
 ### Next Steps
 - Task 6.3: Condensation-Communication Link (update communications table when message is condensed, set is_condensed=True, store condensed_summary)
+
+## Task 6.3: Condensation-Communication Link — 2026-02-20
+
+### Summary
+Implemented the connection between the Condensation Engine and the database. The engine now persists condensation states (marking messages as condensed and storing summaries) and provides a `recall_message` function to retrieve original content.
+
+### Files Created
+- `backend/core/memory/condensation_link.py` — Service for DB updates and message recall.
+- `backend/tests/test_condensation_link.py` — 7 tests covering DB operations and integration.
+
+### Files Modified
+- `backend/core/memory/condensation.py` — Updated to call `mark_condensed` after condensation.
+- `backend/core/memory/__init__.py` — Exported `CondensationLink`.
+
+### Key Design Decisions
+- `CondensationLink` is implemented as a module with top-level functions (`mark_condensed`, `recall_message`) to keep it lightweight.
+- `mark_condensed` uses a single bulk UPDATE query for efficiency.
+- `CondensationEngine` gracefully handles DB errors (logs them) without crashing the condensation process.
+
+### Testing Results
+- ✅ 7 new tests passing in test_condensation_link.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+
+### Next Steps
+- Task 6.4: Context Builder Integration (refactor agent think loop to use TokenCounter + CondensationEngine before each LLM call)

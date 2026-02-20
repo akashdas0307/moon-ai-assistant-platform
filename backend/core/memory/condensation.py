@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 
 from backend.core.llm.service import LLMService
 from backend.core.memory.token_counter import TokenCounter, token_counter as default_token_counter
+from backend.core.memory.condensation_link import mark_condensed
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,21 @@ class CondensationEngine:
         logger.info("Condensing %d middle messages.", len(middle))
         summary_message = await self._summarise_middle(middle)
 
+        # Persist to DB
+        self._persist_condensation(middle, summary_message.get("content", ""))
+
         return first_3 + [summary_message] + last_7
+
+    def _persist_condensation(self, middle_messages: List[Dict[str, Any]], summary_text: str):
+        """
+        Extract com_ids from middle messages and mark them as condensed in the DB.
+        """
+        try:
+            com_ids = [msg.get("com_id") for msg in middle_messages if msg.get("com_id")]
+            if com_ids:
+                mark_condensed(com_ids, summary_text)
+        except Exception as e:
+            logger.error(f"Failed to persist condensation state to DB: {e}")
 
     async def _summarise_middle(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -115,5 +130,3 @@ class CondensationEngine:
             "condensed": True,
             "message_count": len(messages),
         }
-
-# Note: Callers should instantiate CondensationEngine with their LLMService instance.
