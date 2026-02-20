@@ -7,6 +7,7 @@ from backend.api.websocket.handlers import handle_websocket
 from backend.database.db import init_db
 from backend.api.routes.messages import router as messages_router
 from backend.api.routes.files import router as files_router
+from backend.api.routes.communications import router as communications_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +27,7 @@ app.include_router(
     prefix="/api/v1/files",
     tags=["files"]
 )
+app.include_router(communications_router, prefix="/api/v1")
 
 # Configure CORS
 app.add_middleware(

@@ -764,3 +764,34 @@ for chain linking but never displays it.
 
 ### Next Steps
 - Task 5.5: Communication Book API (REST endpoints for querying the message chain)
+
+## Task 5.5: Communication Book API — [Date: 2026-02-18]
+
+### Summary
+Created REST endpoints for querying the Communication Book, making the doubly-linked
+message chain fully accessible via HTTP. This completes Phase 5.
+
+### Files Created
+- `backend/api/routes/communications.py` — Three endpoints: GET /initiators, GET /{com_id}, GET /{com_id}/chain
+- `backend/tests/test_communication_api.py` — 6 tests covering all endpoints and edge cases
+
+### Files Modified
+- `backend/main.py` — Registered communications router under /api/v1
+
+### Endpoints
+- `GET /api/v1/communications/initiators` — Lists all conversation-starting messages
+- `GET /api/v1/communications/{com_id}` — Fetches a single message by com_id (404 if not found)
+- `GET /api/v1/communications/{com_id}/chain` — Returns full ordered chain containing com_id (404 if not found)
+
+### Testing Results
+- ✅ 6 new tests passing in test_communication_api.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+
+### Phase 5 Complete
+All 5 Communication Book tasks are done:
+5.1 DB Schema → 5.2 Service → 5.3 Chain Traversal → 5.4 Metadata Attachment → 5.5 REST API
+
+### Next Steps
+- Phase 5 Review Checkpoint: Claude verifies chain integrity and no orphaned messages
+- Phase 6: Smart Condensation (Token Counter → Condensation Engine)
