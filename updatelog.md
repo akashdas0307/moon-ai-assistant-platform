@@ -888,3 +888,36 @@ Implemented the connection between the Condensation Engine and the database. The
 
 ### Next Steps
 - Task 6.4: Context Builder Integration (refactor agent think loop to use TokenCounter + CondensationEngine before each LLM call)
+
+## Task 6.4: Context Builder Integration — 2024-05-23
+
+### Summary
+Wired the smart condensation system into the HeadAgent think loop. The agent now
+automatically checks and applies token-budget-based condensation to conversation
+history before every LLM call, making Phase 6 fully operational end-to-end.
+
+### Files Modified
+- `backend/core/agent/head_agent.py` — Added CondensationEngine import and instantiation in __init__; added condense() call in process_message() with error fallback
+- `backend/tests/test_head_agent.py` — Added condensation_engine mock to process_message tests to prevent real LLM calls
+
+### Files Created
+- `backend/tests/test_context_builder.py` — 6 tests covering engine init, condense call, condensed history routing, error fallback, and None-engine safety
+
+### Key Design Decisions
+- CondensationEngine is only instantiated when llm_service exists (same lifecycle guard)
+- condense() call is wrapped in try/except — failure falls back to raw history silently
+- No changes to _build_conversation_history() itself — condensation is a post-processing step
+- Pass-through behavior: if history is within token budget, condense() returns messages unchanged
+
+### Testing Results
+- ✅ 6 new tests passing in test_context_builder.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+
+### Phase 6 Complete
+All 4 Smart Condensation tasks are done:
+6.1 TokenCounter → 6.2 CondensationEngine → 6.3 CondensationLink → 6.4 Context Builder Integration
+
+### Next Steps
+- Phase 6 Review Checkpoint: Claude verifies condensation triggers correctly with long conversations
+- Phase 7: Vector Memory & Contextual Injection

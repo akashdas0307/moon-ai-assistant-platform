@@ -24,7 +24,8 @@ def mock_llm_service():
 
 @pytest.fixture
 def mock_db_funcs():
-    with patch("backend.core.agent.head_agent.get_recent_messages") as mock_get,          patch("backend.core.agent.head_agent.save_message") as mock_save:
+    with patch("backend.core.agent.head_agent.get_recent_messages") as mock_get, \
+         patch("backend.core.agent.head_agent.save_message") as mock_save:
         mock_get.return_value = []
         yield mock_get, mock_save
 
@@ -47,6 +48,7 @@ async def test_head_agent_initialization(head_agent, mock_llm_service):
     """Test that HeadAgent initializes correctly."""
     assert head_agent.llm_service == mock_llm_service
     assert head_agent.agent_files_dir.exists()
+    assert head_agent.condensation_engine is not None
 
 def test_read_agent_files(head_agent):
     """Test reading agent files."""
@@ -103,13 +105,18 @@ async def test_process_message(head_agent, mock_llm_service, mock_db_funcs):
     """Test processing a message through the full loop (streaming)."""
     mock_get, mock_save = mock_db_funcs
 
-    # Collect tokens from generator
-    tokens = []
-    async for token in head_agent.process_message("Hello AI"):
-        tokens.append(token)
+    # Mock condensation to avoid real LLM calls
+    with patch.object(head_agent.condensation_engine, "condense", side_effect=lambda msgs: msgs) as mock_condense:
+        # Collect tokens from generator
+        tokens = []
+        async for token in head_agent.process_message("Hello AI"):
+            tokens.append(token)
 
-    response = "".join(tokens)
-    assert response == "Mock AI Response"
+        response = "".join(tokens)
+        assert response == "Mock AI Response"
+
+        # Verify condense was called
+        mock_condense.assert_called_once()
 
     # Verify LLM called with stream=True
     mock_llm_service.send_message.assert_called_once()
@@ -135,6 +142,7 @@ async def test_process_message(head_agent, mock_llm_service, mock_db_funcs):
 async def test_process_message_no_llm(head_agent, mock_db_funcs):
     """Test processing message without LLM service."""
     head_agent.llm_service = None
+    head_agent.condensation_engine = None
     _, mock_save = mock_db_funcs
 
     tokens = []
@@ -159,9 +167,11 @@ async def test_process_message_llm_error(head_agent, mock_llm_service, mock_db_f
     mock_llm_service.send_message.side_effect = Exception("LLM Error")
     _, mock_save = mock_db_funcs
 
-    tokens = []
-    async for token in head_agent.process_message("Hello"):
-        tokens.append(token)
+    # Mock condensation
+    with patch.object(head_agent.condensation_engine, "condense", side_effect=lambda msgs: msgs):
+        tokens = []
+        async for token in head_agent.process_message("Hello"):
+            tokens.append(token)
 
     response = "".join(tokens)
 
