@@ -10,6 +10,7 @@ from datetime import datetime
 from backend.core.llm.service import LLMService, llm_service as global_llm_service
 from backend.services.message_service import get_recent_messages, save_message
 from backend.models.message import MessageCreate
+from backend.core.memory import CondensationEngine
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +76,10 @@ class HeadAgent:
 
         if self.llm_service:
             logger.info("HeadAgent initialized with LLM service.")
+            self.condensation_engine = CondensationEngine(llm_service=self.llm_service)
         else:
             logger.warning("HeadAgent initialized WITHOUT LLM service. AI responses disabled.")
+            self.condensation_engine = None
 
     def _read_file(self, filename: str) -> str:
         """
@@ -485,6 +488,14 @@ You can write notes to your NOTEBOOK.md for future reference using special synta
         # 2. Build context
         system_prompt = self.build_system_prompt()
         conversation_history = self._build_conversation_history(user_message)
+
+        # Apply smart condensation if engine is available
+        if self.condensation_engine:
+            try:
+                conversation_history = await self.condensation_engine.condense(conversation_history)
+                logger.debug("Context builder: history has %d messages after condensation check.", len(conversation_history))
+            except Exception as e:
+                logger.error("Condensation failed, using raw history: %s", e)
 
         full_messages = [{"role": "system", "content": system_prompt}] + conversation_history
 
