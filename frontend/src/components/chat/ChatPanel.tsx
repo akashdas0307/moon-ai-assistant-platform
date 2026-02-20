@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Message } from '../../types/chat';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -8,10 +8,11 @@ import { WEBSOCKET_URL } from '../../config/constants';
 import { useMessageStore } from '../../stores/messageStore';
 
 export function ChatPanel() {
-  const { messages, addMessage, loadMessages, error } = useMessageStore();
+  const { messages, addMessage, loadMessages, error, lastComId, setLastComId, updateMessage } = useMessageStore();
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessages, setStreamingMessages] = useState<Map<string, Message>>(new Map());
   const [pendingFinalizeMessage, setPendingFinalizeMessage] = useState<Message | null>(null);
+  const lastUserMessageIdRef = useRef<string | null>(null);
 
   // Load messages on mount
   useEffect(() => {
@@ -42,8 +43,15 @@ export function ChatPanel() {
     setIsTyping(false);
   }, [addMessage]);
 
-  const handleStreamStart = useCallback((messageId: string) => {
+  const handleStreamStart = useCallback((messageId: string, userComId?: string) => {
     setIsTyping(false); // Stop generic typing indicator
+
+    // If we have a userComId and a pending user message, update it
+    if (userComId && lastUserMessageIdRef.current) {
+        updateMessage(lastUserMessageIdRef.current, { com_id: userComId });
+        lastUserMessageIdRef.current = null; // Clear it
+    }
+
     const newMessage: Message = {
       id: messageId,
       sender: 'ai',
@@ -52,7 +60,7 @@ export function ChatPanel() {
       isStreaming: true
     };
     setStreamingMessages(prev => new Map(prev).set(messageId, newMessage));
-  }, []);
+  }, [updateMessage]);
 
   const handleStreamToken = useCallback((messageId: string, token: string) => {
     setStreamingMessages(prev => {
@@ -65,7 +73,7 @@ export function ChatPanel() {
     });
   }, []);
 
-  const handleStreamEnd = useCallback((messageId: string, fullContent: string) => {
+  const handleStreamEnd = useCallback((messageId: string, fullContent: string, aiComId?: string) => {
     setStreamingMessages(prev => {
       const map = new Map(prev);
       const msg = map.get(messageId);
@@ -74,14 +82,20 @@ export function ChatPanel() {
         const finalizedMsg = {
           ...msg,
           content: fullContent || msg.content,
-          isStreaming: false
+          isStreaming: false,
+          com_id: aiComId
         };
         setPendingFinalizeMessage(finalizedMsg);
         map.delete(messageId);
+
+        // Update lastComId in store for chaining
+        if (aiComId) {
+            setLastComId(aiComId);
+        }
       }
       return map;
     });
-  }, []);
+  }, [setLastComId]);
 
   const handleConnect = useCallback(() => {
     console.log('Connected to WebSocket server');
@@ -110,15 +124,18 @@ export function ChatPanel() {
   });
 
   const handleSendMessage = (content: string) => {
+    const id = Date.now().toString();
+    lastUserMessageIdRef.current = id;
+
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id,
       sender: 'user',
       content,
       timestamp: new Date()
     };
     addMessage(userMessage);
     setIsTyping(true);
-    sendWebSocketMessage(content);
+    sendWebSocketMessage(content, lastComId);
   };
 
   // Combine store messages with currently streaming messages

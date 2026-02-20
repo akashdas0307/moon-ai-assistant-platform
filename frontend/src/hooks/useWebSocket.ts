@@ -4,9 +4,9 @@ import { Message } from '../types/chat';
 export interface WebSocketConfig {
   url: string;
   onMessage?: (message: Message) => void;
-  onStreamStart?: (messageId: string) => void;
+  onStreamStart?: (messageId: string, userComId?: string) => void;
   onStreamToken?: (messageId: string, token: string) => void;
-  onStreamEnd?: (messageId: string, fullContent: string) => void;
+  onStreamEnd?: (messageId: string, fullContent: string, aiComId?: string) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
@@ -17,7 +17,7 @@ export interface WebSocketConfig {
 export interface WebSocketState {
   isConnected: boolean;
   connectionError: string | null;
-  sendMessage: (content: string) => void;
+  sendMessage: (content: string, lastComId?: string | null) => void;
   disconnect: () => void;
 }
 
@@ -43,6 +43,11 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
 
   const connect = useCallback(() => {
     try {
+      // Cleanup previous connection if it exists
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+
       const ws = new WebSocket(url);
 
       ws.onopen = () => {
@@ -62,11 +67,11 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
             // Connection confirmation message
             console.log('Connection confirmed:', data.message);
           } else if (data.type === 'stream_start') {
-            onStreamStart?.(data.message_id);
+            onStreamStart?.(data.message_id, data.user_com_id);
           } else if (data.type === 'stream_token') {
             onStreamToken?.(data.message_id, data.token);
           } else if (data.type === 'stream_end') {
-            onStreamEnd?.(data.message_id, data.content);
+            onStreamEnd?.(data.message_id, data.content, data.ai_com_id);
           } else if (data.type === 'echo' || data.type === 'message') {
             // Convert to Message format and pass to callback
             // Map 'assistant' sender from backend to 'ai' for frontend
@@ -115,12 +120,13 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
     }
   }, [url, onMessage, onStreamStart, onStreamToken, onStreamEnd, onConnect, onDisconnect, onError, autoReconnect, reconnectInterval]);
 
-  const sendMessage = useCallback((content: string) => {
+  const sendMessage = useCallback((content: string, lastComId?: string | null) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       const message = {
         type: 'message',
         content,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        last_com_id: lastComId ?? null
       };
       wsRef.current.send(JSON.stringify(message));
       console.log('Message sent:', message);
