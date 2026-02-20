@@ -1,8 +1,8 @@
 import pytest
 import sqlite3
 import uuid
-import os
-from unittest.mock import AsyncMock, MagicMock, patch
+
+from unittest.mock import MagicMock, patch
 from backend.core.communication.service import save_message, get_chain, get_message
 from backend.models.communication import CommunicationCreate
 from fastapi.testclient import TestClient
