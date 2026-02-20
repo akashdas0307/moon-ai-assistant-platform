@@ -11,7 +11,8 @@
       "Bash(PYTHONPATH=\"c:/Users/KIIT0001/Desktop/Moon/moon-ai-assistant-platform\" python -c:*)",
       "Bash(PYTHONPATH=\"c:/Users/KIIT0001/Desktop/Moon/moon-ai-assistant-platform\" PYTHONIOENCODING=utf-8 python:*)",
       "Bash(npm run:*)",
-      "Bash(\"c:/Users/KIIT0001/Desktop/Moon/moon-ai-assistant-platform/backend/venv/Scripts/python.exe\" -m pip install:*)"
+      "Bash(\"c:/Users/KIIT0001/Desktop/Moon/moon-ai-assistant-platform/backend/venv/Scripts/python.exe\" -m pip install:*)",
+      "Bash(python3:*)"
     ]
   }
 }
