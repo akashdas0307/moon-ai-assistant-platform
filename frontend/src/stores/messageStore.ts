@@ -12,6 +12,7 @@ interface MessageState {
   setMessages: (messages: Message[]) => void;
   setLastComId: (comId: string | null) => void;
   updateMessage: (id: string, updates: Partial<Message>) => void;
+  clearMessages: () => void;
 }
 
 export const useMessageStore = create<MessageState>((set) => ({
@@ -66,4 +67,6 @@ export const useMessageStore = create<MessageState>((set) => ({
       msg.id === id ? { ...msg, ...updates } : msg
     )
   })),
+
+  clearMessages: () => set({ messages: [], lastComId: null }),
 }));

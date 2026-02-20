@@ -68,6 +68,10 @@ class ApiClient {
   async getMessages(limit: number = 100): Promise<MessageResponse[]> {
     return this.request<MessageResponse[]>(`/api/v1/messages?limit=${limit}`);
   }
+
+  async clearConversation(): Promise<void> {
+    await this.request<{ status: string; message: string }>('/api/v1/messages/clear', { method: 'DELETE' });
+  }
 }
 
 export const apiClient = new ApiClient();

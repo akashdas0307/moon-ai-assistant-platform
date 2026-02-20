@@ -4,6 +4,37 @@
 
 ---
 
+## Bug Fix: WebSocket Stability + Clear Conversation — [Date: 2026-02-21]
+
+### Context
+Phase 6 Review revealed two critical runtime bugs discovered during live testing that prevented the agent from responding through the UI:
+1. WebSocket infinite reconnect loop (frontend)
+2. Backend streaming crash on disconnected client
+
+### Root Causes
+**Bug 1 (Frontend):** `useWebSocket.ts` — `connect` useCallback included all callback props in its dependency array. Since `connect` was in the `useEffect` dependency array, any callback reference change (on every re-render) triggered a full disconnect/reconnect cycle every ~3 seconds.
+**Bug 2 (Backend):** `handlers.py` — streaming loop called `websocket.send_json()` without checking `websocket.client_state`. When client disconnected during LLM processing, backend threw `"Cannot call send once a close message has been sent."`
+
+### Files Modified
+- `frontend/src/hooks/useWebSocket.ts` — Refactored to store all callbacks in refs; `connect` now only depends on `url` (stable reference); eliminates reconnect loop
+- `backend/api/websocket/handlers.py` — Added `WebSocketState.CONNECTED` check before each `send_json` call in streaming loop; separated `WebSocketDisconnect` exception from general errors
+- `backend/api/routes/messages.py` — Added `DELETE /api/v1/messages/clear` endpoint that clears messages, communications, and initiator_log tables
+- `frontend/src/stores/messageStore.ts` — Added `clearMessages` action (resets messages array and lastComId)
+- `frontend/src/services/apiClient.ts` — Added `clearConversation()` method calling the new endpoint
+- `frontend/src/components/chat/ChatPanel.tsx` — Added "Clear Chat" button with window.confirm guard
+
+### Testing Results
+- ✅ All backend tests passing
+- ✅ Ruff linting clean
+- ✅ TypeScript type check passing
+- ✅ Frontend tests passing
+
+### Next Steps
+- Phase 6 Review: Re-run live functional test to confirm agent responds correctly with stable WebSocket
+- Phase 7: Vector Memory & Contextual Injection
+
+---
+
 ## Task 3.3 FIX - [Date: 2026-02-16]
 
 ### Issue Summary

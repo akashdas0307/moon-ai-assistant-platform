@@ -24,13 +24,6 @@ export interface WebSocketState {
 export function useWebSocket(config: WebSocketConfig): WebSocketState {
   const {
     url,
-    onMessage,
-    onStreamStart,
-    onStreamToken,
-    onStreamEnd,
-    onConnect,
-    onDisconnect,
-    onError,
     autoReconnect = true,
     reconnectInterval = 3000
   } = config;
@@ -41,49 +34,74 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const shouldReconnectRef = useRef(true);
 
-  const connect = useCallback(() => {
-    try {
-      // Cleanup previous connection if it exists
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+  // Store all callbacks in refs so `connect` never needs them as deps
+  const onMessageRef = useRef(config.onMessage);
+  const onStreamStartRef = useRef(config.onStreamStart);
+  const onStreamTokenRef = useRef(config.onStreamToken);
+  const onStreamEndRef = useRef(config.onStreamEnd);
+  const onConnectRef = useRef(config.onConnect);
+  const onDisconnectRef = useRef(config.onDisconnect);
+  const onErrorRef = useRef(config.onError);
+  const autoReconnectRef = useRef(autoReconnect);
+  const reconnectIntervalRef = useRef(reconnectInterval);
 
+  // Keep refs in sync with latest prop values (no re-renders triggered)
+  useEffect(() => { onMessageRef.current = config.onMessage; });
+  useEffect(() => { onStreamStartRef.current = config.onStreamStart; });
+  useEffect(() => { onStreamTokenRef.current = config.onStreamToken; });
+  useEffect(() => { onStreamEndRef.current = config.onStreamEnd; });
+  useEffect(() => { onConnectRef.current = config.onConnect; });
+  useEffect(() => { onDisconnectRef.current = config.onDisconnect; });
+  useEffect(() => { onErrorRef.current = config.onError; });
+  useEffect(() => { autoReconnectRef.current = autoReconnect; });
+  useEffect(() => { reconnectIntervalRef.current = reconnectInterval; });
+
+  // connect only depends on `url` — stable reference, no infinite loop
+  const connect = useCallback(() => {
+    // Cancel any pending reconnect
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    // Close existing connection cleanly
+    if (wsRef.current) {
+      wsRef.current.onclose = null; // prevent reconnect trigger on manual close
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    try {
       const ws = new WebSocket(url);
 
       ws.onopen = () => {
         console.log('WebSocket connected');
         setIsConnected(true);
         setConnectionError(null);
-        onConnect?.();
+        onConnectRef.current?.();
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          // console.log('WebSocket message received:', data); // Too noisy for streaming tokens
 
-          // Handle different message types
           if (data.type === 'connection') {
-            // Connection confirmation message
             console.log('Connection confirmed:', data.message);
           } else if (data.type === 'stream_start') {
-            onStreamStart?.(data.message_id, data.user_com_id);
+            onStreamStartRef.current?.(data.message_id, data.user_com_id);
           } else if (data.type === 'stream_token') {
-            onStreamToken?.(data.message_id, data.token);
+            onStreamTokenRef.current?.(data.message_id, data.token);
           } else if (data.type === 'stream_end') {
-            onStreamEnd?.(data.message_id, data.content, data.ai_com_id);
+            onStreamEndRef.current?.(data.message_id, data.content, data.ai_com_id);
           } else if (data.type === 'echo' || data.type === 'message') {
-            // Convert to Message format and pass to callback
-            // Map 'assistant' sender from backend to 'ai' for frontend
             const sender = data.sender === 'assistant' ? 'ai' : (data.sender || 'ai');
-
             const message: Message = {
               id: data.timestamp || Date.now().toString(),
               sender: sender as 'user' | 'ai',
               content: data.content || data.server_message || data.original_message?.content || '',
               timestamp: new Date(data.timestamp || Date.now())
             };
-            onMessage?.(message);
+            onMessageRef.current?.(message);
           } else if (data.type === 'error') {
             console.error('Server error:', data.message);
             setConnectionError(data.message);
@@ -96,20 +114,19 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         setConnectionError('WebSocket connection error');
-        onError?.(error);
+        onErrorRef.current?.(error);
       };
 
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setIsConnected(false);
-        onDisconnect?.();
+        onDisconnectRef.current?.();
 
-        // Auto-reconnect if enabled
-        if (autoReconnect && shouldReconnectRef.current) {
-          console.log('Reconnecting in ' + reconnectInterval + 'ms...');
+        if (autoReconnectRef.current && shouldReconnectRef.current) {
+          console.log(`Reconnecting in ${reconnectIntervalRef.current}ms...`);
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
-          }, reconnectInterval);
+          }, reconnectIntervalRef.current);
         }
       };
 
@@ -118,7 +135,7 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
       console.error('Failed to create WebSocket:', error);
       setConnectionError('Failed to connect to server');
     }
-  }, [url, onMessage, onStreamStart, onStreamToken, onStreamEnd, onConnect, onDisconnect, onError, autoReconnect, reconnectInterval]);
+  }, [url]); // ← ONLY url as dependency — this is the critical fix
 
   const sendMessage = useCallback((content: string, lastComId?: string | null) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -140,21 +157,34 @@ export function useWebSocket(config: WebSocketConfig): WebSocketState {
     shouldReconnectRef.current = false;
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
     if (wsRef.current) {
+      wsRef.current.onclose = null; // prevent auto-reconnect on manual disconnect
       wsRef.current.close();
       wsRef.current = null;
     }
+    setIsConnected(false);
   }, []);
 
+  // Only runs once on mount (connect only changes if url changes)
   useEffect(() => {
     shouldReconnectRef.current = true;
     connect();
 
     return () => {
-      disconnect();
+      shouldReconnectRef.current = false;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        // Do NOT null out onclose here — onDisconnect should fire on unmount.
+        // shouldReconnectRef.current is false so no auto-reconnect will occur.
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
-  }, [connect, disconnect]);
+  }, [connect]); // connect is now stable (only changes if url changes)
 
   return {
     isConnected,

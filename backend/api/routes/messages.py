@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List
+import logging
 
 from backend.models.message import MessageResponse, MessageCreate
 from backend.services.message_service import (
@@ -8,6 +9,9 @@ from backend.services.message_service import (
     save_message,
     clear_all_messages
 )
+from backend.database.db import get_db_connection
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
@@ -64,3 +68,23 @@ async def delete_all_messages():
         clear_all_messages()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/clear")
+async def clear_messages():
+    """Clear all messages from both the messages and communications tables."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        # Clear communications chain tables first (FK constraints)
+        cursor.execute("DELETE FROM initiator_log")
+        cursor.execute("DELETE FROM communications")
+        # Clear the main messages table
+        cursor.execute("DELETE FROM messages")
+        conn.commit()
+        return {"status": "cleared", "message": "All conversation history cleared."}
+    except Exception as e:
+        logger.error(f"Failed to clear messages: {e}")
+        raise HTTPException(status_code=500, detail="Failed to clear conversation history.")
+    finally:
+        conn.close()

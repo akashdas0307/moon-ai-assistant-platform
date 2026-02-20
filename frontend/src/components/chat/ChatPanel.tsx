@@ -6,9 +6,10 @@ import { TypingIndicator } from './TypingIndicator';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { WEBSOCKET_URL } from '../../config/constants';
 import { useMessageStore } from '../../stores/messageStore';
+import { apiClient } from '../../services/apiClient';
 
 export function ChatPanel() {
-  const { messages, addMessage, loadMessages, error, lastComId, setLastComId, updateMessage } = useMessageStore();
+  const { messages, addMessage, loadMessages, error, lastComId, setLastComId, updateMessage, clearMessages } = useMessageStore();
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessages, setStreamingMessages] = useState<Map<string, Message>>(new Map());
   const [pendingFinalizeMessage, setPendingFinalizeMessage] = useState<Message | null>(null);
@@ -109,6 +110,18 @@ export function ChatPanel() {
     console.error('WebSocket error:', error);
   }, []);
 
+  const handleClearChat = useCallback(async () => {
+    if (!window.confirm('Clear all conversation history? This cannot be undone.')) {
+      return;
+    }
+    try {
+      await apiClient.clearConversation();
+      clearMessages();
+    } catch (err) {
+      console.error('Failed to clear conversation:', err);
+    }
+  }, [clearMessages]);
+
   // Initialize WebSocket connection
   const { isConnected, connectionError, sendMessage: sendWebSocketMessage } = useWebSocket({
     url: WEBSOCKET_URL,
@@ -170,6 +183,12 @@ export function ChatPanel() {
             </div>
           </div>
         </div>
+        <button
+          onClick={handleClearChat}
+          className="text-xs text-gray-400 hover:text-red-400 border border-gray-700 hover:border-red-500/50 px-3 py-1.5 rounded-lg transition-colors duration-200"
+        >
+          Clear Chat
+        </button>
       </div>
 
       {/* Error Banner */}

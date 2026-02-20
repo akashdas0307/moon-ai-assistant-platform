@@ -1,5 +1,6 @@
 """WebSocket message handlers."""
 from fastapi import WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 from datetime import datetime
 import json
 import logging
@@ -69,27 +70,46 @@ async def handle_websocket(websocket: WebSocket):
                     message_id = str(uuid.uuid4())
 
                     # --- 2. Send stream start with user_com_id ---
-                    await manager.send_message(client_id, {
-                        "type": "stream_start",
-                        "message_id": message_id,
-                        "user_com_id": user_com_id,
-                        "timestamp": datetime.utcnow().isoformat()
-                    })
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        try:
+                            await manager.send_message(client_id, {
+                                "type": "stream_start",
+                                "message_id": message_id,
+                                "user_com_id": user_com_id,
+                                "timestamp": datetime.utcnow().isoformat()
+                            })
+                        except Exception as send_error:
+                            logger.error(f"Failed to send stream_start: {send_error}")
 
                     accumulated = ""
                     try:
                         # Process message through agent (streaming)
                         async for token in head_agent.process_message(content):
-                            # Send token
-                            await manager.send_message(client_id, {
-                                "type": "stream_token",
-                                "message_id": message_id,
-                                "token": token,
-                                "timestamp": datetime.utcnow().isoformat()
-                            })
+                            # Check if client is still connected before sending
+                            if websocket.client_state != WebSocketState.CONNECTED:
+                                logger.warning("Client disconnected during streaming, aborting send.")
+                                break
+                            try:
+                                await manager.send_message(client_id, {
+                                    "type": "stream_token",
+                                    "message_id": message_id,
+                                    "token": token,
+                                    "timestamp": datetime.utcnow().isoformat()
+                                })
+                            except Exception as send_error:
+                                logger.error(f"Failed to send token: {send_error}")
+                                break
                             accumulated += token
+                    except WebSocketDisconnect:
+                        logger.info(f"Client {client_id} disconnected during streaming (expected).")
                     except Exception as e:
                         logger.error(f"Error during streaming for {client_id}: {e}")
+                        # Attempt to send error message only if still connected
+                        if websocket.client_state == WebSocketState.CONNECTED:
+                            try:
+                                await manager.send_message(client_id, {"type": "error", "message": "Streaming error occurred."})
+                            except Exception:
+                                pass
 
                     # --- 3. Save AI Message ---
                     ai_com_id = None
@@ -106,14 +126,18 @@ async def handle_websocket(websocket: WebSocket):
                             logger.error(f"Failed to save AI message: {e}")
 
                     # --- 4. Send stream end with ai_com_id ---
-                    await manager.send_message(client_id, {
-                        "type": "stream_end",
-                        "message_id": message_id,
-                        "content": accumulated,
-                        "sender": "assistant",
-                        "ai_com_id": ai_com_id,
-                        "timestamp": datetime.utcnow().isoformat()
-                    })
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        try:
+                            await manager.send_message(client_id, {
+                                "type": "stream_end",
+                                "message_id": message_id,
+                                "content": accumulated,
+                                "sender": "assistant",
+                                "ai_com_id": ai_com_id,
+                                "timestamp": datetime.utcnow().isoformat()
+                            })
+                        except Exception as send_error:
+                            logger.error(f"Failed to send stream_end: {send_error}")
 
                 else:
                     # Fallback if agent failed to initialize
