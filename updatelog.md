@@ -703,3 +703,25 @@ automatically logged to initiator_log.
 
 ### Next Steps
 - Task 5.3: Chain Traversal (get_chain, get_full_message, get_conversation_start)
+
+## Task 5.3: Chain Traversal — 2026-02-20
+
+### Summary
+Implemented chain traversal functions in `backend/core/communication/service.py` to navigate doubly-linked message chains and retrieve full conversations.
+
+### Files Modified
+- `backend/core/communication/service.py` — Added: `get_chain()`, `get_full_message()`, `get_conversation_start()`
+- `backend/tests/test_communication_service.py` — Added 9 chain traversal tests
+
+### Key Logic
+- **`get_conversation_start(com_id)`**: Walks backward via `initiator_com_id` until `None`. Uses a `visited` set and 10,000 step limit to prevent infinite loops.
+- **`get_chain(com_id)`**: First finds the start using `get_conversation_start`, then walks forward via `exitor_com_id` to collect all messages in order. Also guarded against cycles.
+- **`get_full_message(com_id)`**: Simple wrapper to return `raw_content`.
+
+### Testing Results
+- ✅ 9 new tests passing in `test_communication_service.py`
+- ✅ All existing tests passing (total 18 tests in file)
+- ✅ Ruff linting clean on modified files
+
+### Next Steps
+- Task 5.4: Metadata Attachment (com_id in WebSocket payload, frontend stores com_id invisibly)

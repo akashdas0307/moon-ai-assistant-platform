@@ -9,6 +9,7 @@ from backend.core.communication.service import (
     CommunicationCreate,
     Communication
 )
+from backend.core.communication.service import get_chain, get_full_message, get_conversation_start
 
 class PersistentConnection(sqlite3.Connection):
     """A connection that ignores close() calls to persist state in tests."""
@@ -181,3 +182,76 @@ def test_non_first_message_not_in_initiator_log(mock_db):
     cursor = mock_db.cursor()
     cursor.execute("SELECT * FROM initiator_log WHERE com_id = ?", (reply.com_id,))
     assert cursor.fetchone() is None
+
+# --- Task 5.3: Chain Traversal Tests ---
+
+def test_get_chain_single_message(mock_db):
+    """Returns a single-message list when the chain has only one message."""
+    msg = CommunicationCreate(sender="u", recipient="a", raw_content="Single", initiator_com_id=None)
+    saved = save_message(msg)
+
+    chain = get_chain(saved.com_id)
+    assert len(chain) == 1
+    assert chain[0].com_id == saved.com_id
+
+def test_get_chain_three_messages_from_middle(mock_db):
+    """Returns all messages in correct order for a 3-message chain, given the middle com_id."""
+    # 1 -> 2 -> 3
+    m1 = save_message(CommunicationCreate(sender="u", recipient="a", raw_content="1", initiator_com_id=None))
+    m2 = save_message(CommunicationCreate(sender="a", recipient="u", raw_content="2", initiator_com_id=m1.com_id))
+    m3 = save_message(CommunicationCreate(sender="u", recipient="a", raw_content="3", initiator_com_id=m2.com_id))
+
+    chain = get_chain(m2.com_id)
+    assert len(chain) == 3
+    assert chain[0].com_id == m1.com_id
+    assert chain[1].com_id == m2.com_id
+    assert chain[2].com_id == m3.com_id
+
+def test_get_chain_three_messages_from_end(mock_db):
+    """Returns all messages in correct order when given the last com_id."""
+    # 1 -> 2 -> 3
+    m1 = save_message(CommunicationCreate(sender="u", recipient="a", raw_content="1", initiator_com_id=None))
+    m2 = save_message(CommunicationCreate(sender="a", recipient="u", raw_content="2", initiator_com_id=m1.com_id))
+    m3 = save_message(CommunicationCreate(sender="u", recipient="a", raw_content="3", initiator_com_id=m2.com_id))
+
+    chain = get_chain(m3.com_id)
+    assert len(chain) == 3
+    assert chain[0].com_id == m1.com_id
+    assert chain[1].com_id == m2.com_id
+    assert chain[2].com_id == m3.com_id
+
+def test_get_chain_non_existent(mock_db):
+    """Returns empty list for a non-existent com_id."""
+    chain = get_chain("fake-id")
+    assert chain == []
+
+def test_get_full_message_existing(mock_db):
+    """Returns the correct raw_content string for an existing message."""
+    msg = save_message(CommunicationCreate(sender="u", recipient="a", raw_content="Hello World", initiator_com_id=None))
+    content = get_full_message(msg.com_id)
+    assert content == "Hello World"
+
+def test_get_full_message_missing(mock_db):
+    """Returns None for a non-existent com_id."""
+    assert get_full_message("fake-id") is None
+
+def test_get_conversation_start_is_start(mock_db):
+    """Returns the message itself when it IS the conversation start."""
+    m1 = save_message(CommunicationCreate(sender="u", recipient="a", raw_content="Start", initiator_com_id=None))
+    start = get_conversation_start(m1.com_id)
+    assert start.com_id == m1.com_id
+    assert start.initiator_com_id is None
+
+def test_get_conversation_start_from_end(mock_db):
+    """Returns the correct start message when given the last message in a 3-message chain."""
+    # 1 -> 2 -> 3
+    m1 = save_message(CommunicationCreate(sender="u", recipient="a", raw_content="1", initiator_com_id=None))
+    m2 = save_message(CommunicationCreate(sender="a", recipient="u", raw_content="2", initiator_com_id=m1.com_id))
+    m3 = save_message(CommunicationCreate(sender="u", recipient="a", raw_content="3", initiator_com_id=m2.com_id))
+
+    start = get_conversation_start(m3.com_id)
+    assert start.com_id == m1.com_id
+
+def test_get_conversation_start_missing(mock_db):
+    """Returns None for a non-existent com_id."""
+    assert get_conversation_start("fake-id") is None
