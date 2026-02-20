@@ -142,3 +142,77 @@ def get_initiators() -> List[InitiatorLog]:
         return initiators
     finally:
         conn.close()
+
+def get_conversation_start(com_id: str) -> Optional[Communication]:
+    """
+    Given any com_id, walk backward until reaching the conversation start.
+    Returns the start Communication object (initiator_com_id=None).
+    Returns None if com_id not found.
+    Safe against circular references (max 10,000 steps).
+    """
+    current_msg = get_message(com_id)
+    if not current_msg:
+        return None
+
+    visited = {current_msg.com_id}
+    steps = 0
+    MAX_STEPS = 10000
+
+    while current_msg.initiator_com_id and steps < MAX_STEPS:
+        prev_id = current_msg.initiator_com_id
+        if prev_id in visited:
+            break
+
+        prev_msg = get_message(prev_id)
+        if not prev_msg:
+            break
+
+        current_msg = prev_msg
+        visited.add(current_msg.com_id)
+        steps += 1
+
+    return current_msg
+
+
+def get_chain(com_id: str) -> List[Communication]:
+    """
+    Given any com_id, return the full ordered list of messages (Start -> End).
+    Returns empty list if com_id not found.
+    Safe against circular references.
+    """
+    start_msg = get_conversation_start(com_id)
+    if not start_msg:
+        return []
+
+    chain = [start_msg]
+    current_msg = start_msg
+    visited = {start_msg.com_id}
+    steps = 0
+    MAX_STEPS = 10000
+
+    while current_msg.exitor_com_id and steps < MAX_STEPS:
+        next_id = current_msg.exitor_com_id
+        if next_id in visited:
+            break
+
+        next_msg = get_message(next_id)
+        if not next_msg:
+            break
+
+        chain.append(next_msg)
+        current_msg = next_msg
+        visited.add(current_msg.com_id)
+        steps += 1
+
+    return chain
+
+
+def get_full_message(com_id: str) -> Optional[str]:
+    """
+    Convenience wrapper: return raw_content string for a com_id.
+    Returns None if not found.
+    """
+    msg = get_message(com_id)
+    if msg:
+        return msg.raw_content
+    return None
