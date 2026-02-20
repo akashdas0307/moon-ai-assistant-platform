@@ -4,6 +4,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   isStreaming?: boolean;
+  com_id?: string;
 }
 
 export interface MessageInputProps {

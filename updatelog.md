@@ -725,3 +725,42 @@ Implemented chain traversal functions in `backend/core/communication/service.py`
 
 ### Next Steps
 - Task 5.4: Metadata Attachment (com_id in WebSocket payload, frontend stores com_id invisibly)
+
+## Task 5.4: Metadata Attachment — 2024-02-12
+
+### Summary
+Wired the Communication Service into the live WebSocket flow. Every user message and AI
+response is now saved to the `communications` table with a UUID com_id. The com_id is
+attached as invisible metadata in the WebSocket payload — the frontend stores it per-message
+for chain linking but never displays it.
+
+### Files Modified
+- `backend/api/websocket/handlers.py` — Saves user message before stream, saves AI response
+  after stream; includes user_com_id in stream_start and ai_com_id in stream_end payloads.
+  save_message wrapped in try/except for graceful degradation.
+- `frontend/src/types/chat.ts` — Added optional `com_id?: string` to Message interface
+- `frontend/src/hooks/useWebSocket.ts` — sendMessage now accepts lastComId param and includes
+  it in outgoing payload; onStreamEnd callback signature updated to pass ai_com_id
+- `frontend/src/stores/messageStore.ts` — Added lastComId state and setLastComId action
+- `frontend/src/components/chat/ChatPanel.tsx` — Passes lastComId to sendMessage; updates
+  lastComId store after each AI response; sets com_id on finalized messages
+
+### Files Created
+- `backend/tests/test_communication_metadata.py` — 5 tests covering chain linking across
+  turns, graceful degradation on save failure, and payload com_id inclusion
+
+### Key Design Decisions
+- com_id is NEVER rendered in the UI — purely invisible metadata
+- Graceful degradation: if save_message throws, the chat continues; com_id fields are null
+- Chain linking: user_com_id passed back to frontend in stream_start so the next user
+  message can set last_com_id correctly (enabling user→AI→user→AI chain)
+- lastComId in store defaults to null (new conversation = no initiator_com_id)
+
+### Testing Results
+- ✅ 5 new tests passing in test_communication_metadata.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+- ✅ TypeScript builds without errors
+
+### Next Steps
+- Task 5.5: Communication Book API (REST endpoints for querying the message chain)

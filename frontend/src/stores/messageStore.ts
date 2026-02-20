@@ -6,15 +6,19 @@ interface MessageState {
   messages: Message[];
   isLoading: boolean;
   error: string | null;
+  lastComId: string | null;
   loadMessages: () => Promise<void>;
   addMessage: (message: Message) => void;
   setMessages: (messages: Message[]) => void;
+  setLastComId: (comId: string | null) => void;
+  updateMessage: (id: string, updates: Partial<Message>) => void;
 }
 
 export const useMessageStore = create<MessageState>((set) => ({
   messages: [],
   isLoading: false,
   error: null,
+  lastComId: null,
 
   loadMessages: async () => {
     set({ isLoading: true, error: null });
@@ -54,4 +58,12 @@ export const useMessageStore = create<MessageState>((set) => ({
   }),
 
   setMessages: (messages) => set({ messages }),
+
+  setLastComId: (comId) => set({ lastComId: comId }),
+
+  updateMessage: (id, updates) => set((state) => ({
+    messages: state.messages.map((msg) =>
+      msg.id === id ? { ...msg, ...updates } : msg
+    )
+  })),
 }));
