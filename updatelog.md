@@ -674,3 +674,32 @@ to its predecessor and successor in the conversation chain.
 - **Issue:** Code review flagged missing `backend/core/communication/__init__.py` as blocking.
 - **Fix:** Created the empty `__init__.py` to register the `communication` directory as a Python package, ready for Task 5.2 service implementation.
 - **Result:** All tests still passing, ruff clean.
+
+## Task 5.2: Communication Service — [Date: 2026-02-17]
+
+### Summary
+Implemented the core Communication Book service layer. Every message saved through
+this service receives a UUID com_id and is doubly-linked into the chain via
+initiator_com_id (backward) and exitor_com_id (forward). First messages are
+automatically logged to initiator_log.
+
+### Files Created
+- `backend/core/communication/service.py` — save_message(), get_message(), get_initiators(), _row_to_communication()
+- `backend/tests/test_communication_service.py` — 9 tests covering chain linking, back-fill, and initiator logging
+
+### Key Logic: save_message() Flow
+1. Generate UUID com_id
+2. INSERT into communications with initiator_com_id from caller
+3. If initiator_com_id is set → UPDATE previous message's exitor_com_id (back-fill)
+4. If initiator_com_id is None → INSERT into initiator_log (conversation starter)
+5. Single commit after all operations
+6. Fetch and return saved row as Communication model
+
+### Testing Results
+- ✅ 9 new tests passing in test_communication_service.py
+- ✅ All existing tests still passing
+- ✅ Ruff linting clean
+- ✅ Verified stable ordering in get_initiators (timestamp DESC, id DESC)
+
+### Next Steps
+- Task 5.3: Chain Traversal (get_chain, get_full_message, get_conversation_start)
